@@ -4,6 +4,8 @@
 #             "jobs": [{"src": "...png", "name": "horseman_jab", "frames": 4, "anchor": "feet"|"box"}]}
 # anchor feet — якорь по ступням (середина нижних 8% силуэта), box — по середине габарита (кадры в воздухе).
 import bpy, sys, json, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from dehalo import dehalo  # снятие светлой обводки с готового атласа
 import numpy as np
 from collections import deque
 
@@ -237,6 +239,8 @@ for job in cfg['jobs']:
         y = ch - 3 - im.shape[0] - f['up']
         x = i * cw + half - f['ax']
         sheet[y:y + im.shape[0], x:x + im.shape[1]] = im
+    if not job.get('nodehalo'):
+        dehalo(sheet)
     save(sheet, os.path.join(cfg['out'], job['name'] + '.png'))
     print('META', json.dumps(dict(name=job['name'], frames=len(frames), want=want, cw=int(cw), ch=int(ch),
                                   heights=[int(f['h0']) for f in frames])))

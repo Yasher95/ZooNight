@@ -337,10 +337,12 @@ const CH=[
 // o: f0,n — диапазон кадров; once — проиграть раз и держать последний; cyc — по шагам; vy — по скорости прыжка;
 //    hit — номер кадра удара (до него — замах, после — возврат)
 // размер ячейки берётся из самой картинки при загрузке (cw, ch в таблице — только до загрузки)
+// версия картинок: менять при каждой замене спрайтов, иначе браузеры игроков показывают старые из кэша
+const AV='20261114b';
 function sheet(src,frames,cw,ch,fps,o){
   const img=new Image(),a={img,frames,cw,ch,fps,...o};
   img.onload=()=>{a.cw=img.naturalWidth/frames;a.ch=img.naturalHeight;};
-  img.src=src;return a;
+  img.src=src+'?v='+AV;return a;
 }
 const HS=(n,frames,cw,ch,fps,o)=>sheet('assets/horseman_'+n+'.png',frames,cw,ch,fps,o);
 const HM_JAB=HS('jab',4,320,384,0,{hit:2}),HM_UP=HS('upper',5,204,418,0,{hit:3}),HM_OH=HS('hammer',5,246,410,0,{hit:2}),
