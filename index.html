@@ -491,7 +491,7 @@ function lerpPose(p,t,k){
 }
 
 // ---------- состояние игры ----------
-const G={diff:1,phase:'menu',mode:1,t:0,round:1,timer:3600,sel:[0,1],ok:[false,false],selT:0,winner:null,timeout:false};
+const G={diff:1,phase:'menu',mode:1,t:0,round:1,timer:3600,sel:[4,4],ok:[false,false],selT:0,winner:null,timeout:false};
 let F=[],projs=[],parts=[],hitstop=0,shake=0,frame=0;
 const EMPTY={};
 const FREE=['idle','walk','crouch','jump','block'];
@@ -668,7 +668,7 @@ function updGrab(a,d){
     d.hp-=dmg;d.jug++;d.flash=5;
     const cx=clamp(a.x-g.side*100,AL-10,AR+10);
     hitstop=7;shake=Math.max(shake,11+g.n*3);
-    burst(cx,GY,'#cfcfcf',18,7);burst(cx,GY-12,'#c0182a',8,5);snd('hit');snd('fall');voice(d,'v_hurt');voice(a,'v_atk');
+    burst(cx,GY,'#cfcfcf',18,7);blood(cx,GY-14,a.facing,26);snd('hit');snd('fall');voice(d,'v_hurt');voice(a,'v_atk');
     if(!a.cpu)rumble(a.i,true);
     if(!d.cpu&&!d.dummy)rumble(d.i,true);
     g.side=-g.side;a.facing=g.side; // следующий замах — в обратную сторону
@@ -700,6 +700,16 @@ function hurtbox(f){
 }
 const overlap=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 
+// брызги крови: летят по направлению удара, падают на пол и остаются пятнами, которые постепенно исчезают
+const BLOOD=['#c0182a','#9a0f1f','#e02a3a','#7a0c18'];
+function blood(x,y,dir,n){
+  for(let i=0;i<n;i++){
+    const a=-.9+Math.random()*1.5,s=2.5+Math.random()*7.5;
+    parts.push({x,y,vx:dir*Math.cos(a)*s*(Math.random()<.2?-.4:1),vy:Math.sin(a)*s-2.5,life:90,col:BLOOD[Math.random()*4|0],
+      size:2+Math.random()*3.5,bl:1,gy:GY-4+Math.random()*30});
+  }
+  if(parts.length>500)parts.splice(0,parts.length-500);
+}
 function burst(x,y,col,n,sp=6){
   for(let i=0;i<n;i++){
     const a=Math.random()*6.283,s=Math.random()*sp+1;
@@ -748,7 +758,7 @@ function resolveHit(a,d,m,dir,isProj,ender){
   if(atWall&&!air&&!isProj)a.vx-=dir*m.kb*.8;
   const heavy=!!m.heavy||m.dmg>=9;
   hitstop=heavy?6:3;shake=Math.max(shake,heavy?9:3);
-  burst(hx,hy,'#ffd24a',heavy?14:8);burst(hx,hy,'#c0182a',heavy?9:5,5);snd('hit');
+  burst(hx,hy,'#ffd24a',heavy?10:6);blood(hx,hy,dir,heavy?30:16);snd('hit');
   voice(d,'v_hurt',heavy?.9:.45);
   if(!d.cpu&&!d.dummy)rumble(d.i,heavy);
   if(!a.cpu&&!a.dummy)rumble(a.i,heavy);
@@ -1045,7 +1055,12 @@ function world(live){
     projs=projs.filter(p=>!p.dead);
     for(const f of F)lerpPose(f.pose,targetPose(f),f.state==='attack'?.5:.3);
   }
-  for(const p of parts){p.x+=p.vx;p.y+=p.vy;p.vy+=.35;p.life--;}
+  for(const p of parts){
+    p.life--;
+    if(p.st)continue;
+    p.x+=p.vx;p.y+=p.vy;p.vy+=.35;
+    if(p.bl&&p.vy>0&&p.y>=p.gy){p.st=1;p.y=p.gy;p.life=200+Math.random()*160;p.x=clamp(p.x,AL-40,AR+40);} // капля упала — пятно на полу
+  }
   parts=parts.filter(p=>p.life>0);
   camX+=(camTarget()-camX)*.16; // камера плавно идёт за серединой между бойцами
   const lo=Math.max(F[0].x,F[1].x)-W+45,hi=Math.min(F[0].x,F[1].x)-45; // но никого не оставляет за краем экрана
@@ -1086,7 +1101,7 @@ function tick(net){
       if(b&&!G.dPrev){G.diff=(G.diff+b+DIFF.length)%DIFF.length;samp('ui_sel',.6,1.2,0);}
       G.dPrev=b;
     }
-    if(G.mode===1&&G.ok[0]&&!G.ok[1]){G.sel[1]=Math.random()*CH.length|0;G.ok[1]=true;samp('ui_sel',.8,1,0);}
+    if(G.mode===1&&G.ok[0]&&!G.ok[1]){G.sel[1]=GRID[0];G.ok[1]=true;samp('ui_sel',.8,1,0);}
     if(G.ok[0]&&G.ok[1]&&++G.selT>40)startMatch();
     return;
   }
@@ -1626,7 +1641,7 @@ function drawMenu(){
 }
 // ---------- экран выбора бойца ----------
 // сетка 3×2 на картинке: номер бойца из CH в каждой рамке, -1 — боец ещё не готов (ЛамаГёрл)
-const GRID=[4,-1,0,1,2,3];
+const GRID=[4,-1,-2,-2,-2,-2]; // -2 — пустая рамка
 const SELBG=new Image();SELBG.src='assets/select_bg.jpg';
 const SELP={'4':new Image(),'-1':new Image()};SELP['4'].src='assets/select_horse.png';SELP['-1'].src='assets/select_lama.png';
 const SLOT=s=>({x:277+(s%3)*139.5,y:105.5+(s/3|0)*174.4,w:127,h:158});
@@ -1656,7 +1671,7 @@ function drawSelect(){
       ctx.restore();
       txt(CH[ci].name,x+w/2,y+h-13,12,'#ccc','center',true);
     }
-    if(ci<0){ctx.fillStyle='rgba(8,8,12,.6)';ctx.fillRect(x+8,y+8,w-16,h-16);txt('СКОРО',x+w/2,y+h/2+7,20,'#bbb');}
+    if(ci===-1){ctx.fillStyle='rgba(8,8,12,.6)';ctx.fillRect(x+8,y+8,w-16,h-16);txt('СКОРО',x+w/2,y+h/2+7,20,'#bbb');}
   }
   for(let pl=0;pl<2;pl++){
     const ai=pl===1&&G.mode===1,shown=!ai||G.ok[1],col=pl?'#ff5a4a':'#4aa8ff',c=CH[G.sel[pl]],cx=pl?820:140;
@@ -1687,6 +1702,8 @@ function render(){
   ctx.save();ctx.translate(-cx,0);
   drawArena();
   if(menu){ctx.restore();if(G.phase==='menu')drawMenu();else if(G.phase==='net')drawNet();else if(G.phase==='keys')drawKeys();else drawSelect();ctx.restore();return;}
+  for(const p of parts)if(p.st){ctx.globalAlpha=clamp(p.life/70,0,.85);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.size*1.3,p.y-p.size*.3,p.size*2.6,p.size*.6);}
+  ctx.globalAlpha=1;
   for(const f of F){
     if(drawShadow(f.i))continue;
     ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();
@@ -1699,7 +1716,11 @@ function render(){
     g.addColorStop(0,'#fff');g.addColorStop(.35,p.col);g.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,22,0,7);ctx.fill();
   }
-  for(const p of parts){ctx.globalAlpha=clamp(p.life/14,0,1);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);}
+  for(const p of parts){
+    ctx.fillStyle=p.col;
+    if(p.st)continue; // пятна на полу нарисованы под бойцами
+    else{ctx.globalAlpha=clamp(p.life/14,0,1);ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);}
+  }
   ctx.globalAlpha=1;
   if(ARENA_FG.complete&&ARENA_FG.naturalWidth)ctx.drawImage(ARENA_FG,3041*WW/3584,919*H/1184,338*WW/3584,265*H/1184); // передний план перекрывает бойцов
   ctx.restore();
