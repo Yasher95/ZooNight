@@ -263,7 +263,12 @@ const SAMP={
   v_hurt:[['voice2',3.01,3.46],['voice4',3.61,4.03]],
   v_ko:[['voice3',3.15,3.79]],
   v_win:[['voice_win',3.05,6.64]],
-  ui_sel:[['ui_select',.44,.83]]
+  ui_sel:[['ui_select',.44,.83]],
+  // голос ЛамаГёрл (4-е число — усиление тихой записи), смех победы и звук плевка
+  l_v_atk:[['lama_v1',.62,1,2],['lama_v3',.57,.9,2.4]],
+  l_v_sp:[['lama_v2',.4,1]],
+  l_v_win:[['lama_win',.01,.96]],
+  l_spit:[['lama_spit',.57,.82]]
 };
 const VTEST=[['v_atk',0,'удар (вариант 1) — horseman1, 1-й звук'],['v_atk',1,'удар (вариант 2) — horseman1, 3-й звук'],
   ['v_sp',0,'спецприём — horseman1, 2-й звук'],['v_hurt',0,'получил удар (вариант 1) — horseman2'],
@@ -280,18 +285,19 @@ function samp(kind,vol=1,rate=1,idx){
   let i=idx!==undefined?idx%list.length:Math.random()*list.length|0;
   if(idx===undefined&&list.length>1&&i===lastS[kind])i=(i+1)%list.length; // один и тот же звук подряд не повторяется
   lastS[kind]=i;
-  const[n,a,b]=list[i],s=ac.createBufferSource(),g=ac.createGain();
-  s.buffer=BUFS[n];s.playbackRate.value=rate;g.gain.value=vol;s.connect(g);g.connect(ac.destination);
+  const[n,a,b,gain=1]=list[i],s=ac.createBufferSource(),g=ac.createGain();
+  s.buffer=BUFS[n];s.playbackRate.value=rate;g.gain.value=vol*gain;s.connect(g);g.connect(ac.destination);
   s.start(0,Math.max(0,a-.02),b-a+.17);
   return true;
 }
 // голос бойца: chance — вероятность (в быстрых сериях кричать на каждый удар не нужно), у второго игрока голос чуть ниже
 function voice(f,kind,chance=1){
-  if(!f.ch.voice||Math.random()>chance)return;
+  const key=(f.ch.vp||'')+kind; // vp — приставка набора голоса бойца
+  if(!f.ch.voice||!SAMP[key]||Math.random()>chance)return;
   const big=kind==='v_ko'||kind==='v_win';
   if(!big&&frame<(f.vT||0))return; // пауза между репликами — по игровым кадрам
   f.vT=frame+(big?90:23);
-  samp(kind,.5,f.i?.9:1);
+  samp(key,.5,f.i?.9:1);
 }
 function snd(k){
   if(!ac)return;
@@ -370,7 +376,7 @@ CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'
 // ЛамаГёрл: быстрая, бьёт ногами и головой; листы — tools/lama_jobs.json
 const LS=(n,frames,cw,ch,fps,o)=>sheet('assets/lama_'+n+'.png',frames,cw,ch,fps,{pal:1,...o});
 const LM_HAM=(o)=>LS('hammer',6,306,428,0,o),LM_AXE=(o)=>LS('axe',5,260,410,0,o),LM_UP=LS('upper',5,192,420,0,{hit:3});
-CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:5.6,power:.95,special:'spit',pv:11,pc:'#c8e86a',
+CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:5.6,power:.95,special:'spit',pv:11,pc:'#c8e86a',voice:true,vp:'l_',
   sp:{n:'spit',d:'wheel',b:'dropkick'},spn:{n:'плевок — снаряд',d:'колесо ↑↑',b:'удар двумя ногами →'},cp:'cpunch',
   str:{
     p1:'lbf','p1,p1':'lhead','p1,p1,p2':'lhammer','p1,p1,k1':'laxe','p1,p1,k1,k2':'lround',
@@ -885,7 +891,7 @@ function updF(f,o,inp){
       if(f.mname==='blink')f.alpha=f.at<m.su?1-f.at/m.su:Math.min(1,(f.at-m.su)/m.rc);
       if(f.at===m.su){
         if(f.mname==='proj'||m.proj){
-          projs.push({x:f.x+f.facing*50,y:f.y-(m.proj||112),vx:f.facing*f.ch.pv,owner:f,col:f.ch.pc});snd('proj');
+          projs.push({x:f.x+f.facing*50,y:f.y-(m.proj||112),vx:f.facing*f.ch.pv,owner:f,col:f.ch.pc});if(!m.proj||!samp('l_spit',.7))snd('proj');
         }else if(f.mname==='blink'){
           burst(f.x,f.y-90,f.ch.accent,14,5);
           const side=o.x>=f.x?1:-1;

@@ -80,6 +80,55 @@ def shed(p, need):
     return [p[l == k + 1] for k in range(len(big))]
 
 
+def fill_holes(a, fg, maxa):
+    """Заливает мелкие дырки внутри силуэта (фон вырезался вместе с белой майкой): цвет — от соседних пикселей."""
+    K = 4
+    h, w = fg.shape
+    hs, ws = h // K, w // K
+    tr = (~fg[:hs * K, :ws * K]).reshape(hs, K, ws, K).all(axis=(1, 3))
+    reach = np.zeros_like(tr)
+    reach[0] = tr[0]; reach[-1] = tr[-1]; reach[:, 0] = tr[:, 0]; reach[:, -1] = tr[:, -1]
+    while True:
+        n = reach.copy()
+        n[1:] |= reach[:-1]; n[:-1] |= reach[1:]; n[:, 1:] |= reach[:, :-1]; n[:, :-1] |= reach[:, 1:]
+        n &= tr
+        if (n == reach).all():
+            break
+        reach = n
+    lab, n = components(tr & ~reach)
+    sz = np.bincount(lab.ravel(), minlength=n + 1)
+    for i in range(1, n + 1):
+        if sz[i] * K * K > maxa:
+            continue
+        ys, xs = np.nonzero(lab == i)
+        y0, y1 = max(0, ys.min() * K - 2 * K), min(h, (ys.max() + 1) * K + 2 * K)
+        x0, x1 = max(0, xs.min() * K - 2 * K), min(w, (xs.max() + 1) * K + 2 * K)
+        R = np.zeros((y1 - y0, x1 - x0), bool)
+        for y, x in zip(ys, xs):
+            R[y * K - y0:(y + 1) * K - y0, x * K - x0:(x + 1) * K - x0] = True
+        sub = fg[y0:y1, x0:x1]
+        for it in range(K + 1):  # края дырки, попавшие в смешанные блоки
+            d = R.copy()
+            d[1:] |= R[:-1]; d[:-1] |= R[1:]; d[:, 1:] |= R[:, :-1]; d[:, :-1] |= R[:, 1:]
+            R = d & ~sub | R
+        col = a[y0:y1, x0:x1, :3].copy()
+        known = sub.copy()
+        todo = R & ~sub
+        while todo.any():
+            acc = np.zeros_like(col); cnt = np.zeros(known.shape, np.float32)
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                k = np.roll(known, (dy, dx), (0, 1)); c = np.roll(col, (dy, dx), (0, 1))
+                acc += c * k[..., None]; cnt += k
+            new = todo & (cnt > 0)
+            if not new.any():
+                break
+            col[new] = acc[new] / cnt[new][:, None]
+            known |= new; todo &= ~new
+        a[y0:y1, x0:x1, :3] = col
+        a[y0:y1, x0:x1, 3][known] = 1.0
+        fg[y0:y1, x0:x1] = known
+
+
 rows = []
 for job in cfg['jobs']:
     img = bpy.data.images.load(job['src'])
@@ -87,6 +136,8 @@ for job in cfg['jobs']:
     a = np.array(img.pixels[:], dtype=np.float32).reshape(h, w, 4)[::-1]
     bpy.data.images.remove(img)
     fg = a[:, :, 3] > 0.5
+    if job.get('fill'):
+        fill_holes(a, fg, job['fill'])
     # dewhite: N — снять белую обводку: N раз срезаем с края силуэта почти белые пиксели
     for it in range(job.get('dewhite', 0)):
         inner = fg.copy()
