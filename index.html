@@ -223,7 +223,7 @@ function moveList(ch){
   if(ch.cp)sp(`${l('d')} + ${l('p1')}/${l('p2')} — удар рукой сидя`,ch.cp);else sp(`${l('d')} + ${l('p1')}/${l('p2')} — апперкот ↑`,'upper');sp(`${l('d')} + ${l('k1')}/${l('k2')} — подсечка`,'sweep');rows.push('');
   if(ch.spn){rows.push(`${l('s')} — ${ch.spn.n}`);sp(`${l('d')} + ${l('s')} — ${ch.spn.d}`,cs.d);sp(`назад + ${l('s')} — ${ch.spn.b}`,cs.b);}
   else{sp(`${l('s')} — таран ↑`,'ram');sp(`${l('d')} + ${l('s')} — подъём ↑↑`,'rise');sp(`назад + ${l('s')} — лягание →`,'mule');}
-  if(cs.g)rows.push(`${l('g')} — захват в воздухе, об пол ×3`);
+  if(cs.g)rows.push(ch.rave?`${l('g')} по подброшенному — воздушная серия`:`${l('g')} — захват в воздухе, об пол ×3`);
   rows.push(
     `${l('g')} вблизи — бросок (выход — ${l('g')})`,
     `${l('run')} + назад — отскок`);
@@ -376,9 +376,9 @@ CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'
 // ЛамаГёрл: быстрая, бьёт ногами и головой; листы — tools/lama_jobs.json
 const LS=(n,frames,cw,ch,fps,o)=>sheet('assets/lama_'+n+'.png',frames,cw,ch,fps,{pal:1,...o});
 const LM_HAM=(o)=>LS('hammer',6,306,428,0,o),LM_AXE=(o)=>LS('axe',5,260,410,0,o),LM_UP=LS('upper',5,192,420,0,{hit:3});
-CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:5.6,power:.95,special:'spit',pv:11,pc:'#c8e86a',voice:true,vp:'l_',
-  sp:{n:'spit',d:'wheel',b:'dropkick',g:'grab'},pm:{dmg:7,kb:4,akb:1,stun:18,type:'mid',chip:1,y0:95,y1:125,special:true,pop:11}, // плевок: в воздухе подкидывает, раз за комбо
-  gseq:[null,['k2','k1','p1'],['p2','p2','k2','k1','p1']],spn:{n:'плевок — снаряд',d:'колесо ↑↑',b:'удар двумя ногами →'},cp:'cpunch',
+CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:5.6,power:1,special:'spit',pv:11,pc:'#c8e86a',voice:true,vp:'l_',
+  sp:{n:'spit',d:'wheel',b:'dropkick',g:'grab'},rave:true,pm:{dmg:7,kb:4,akb:1,stun:18,type:'mid',chip:1,y0:95,y1:125,special:true,pop:11}, // плевок: в воздухе подкидывает, раз за комбо
+  spn:{n:'плевок — снаряд',d:'колесо ↑↑',b:'удар двумя ногами →'},cp:'cpunch',
   // серии длинные (до 5 ударов): лёгкие удары держат противника в воздухе, концовки подбрасывают, бьют об пол или в стену
   str:{
     p1:'lbf','p1,p1':'lhead','p1,p1,p2':'lhammer',
@@ -409,8 +409,8 @@ CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',
     cpunch:LS('cpunch',8,312,291,0,{hit:4}),sweep:LS('sweep',7,582,283,0,{f0:4,n:3,hit:1}),
     jpunch:LS('jpunch',6,490,417,0,{f0:2,n:2,hit:1}),jkick:LS('jkick',6,394,420,0,{f0:3,n:1}),
     spit:LS('spit',6,196,384,0),wheel:LS('wheel',6,356,418,0,{hit:3}),dropkick:LS('dropkick',6,364,414,0,{hit:3}),
-    // захват в воздухе: прыжок за противником (кадры апперкота), удары об пол — молот двумя руками
-    grab:LS('upper',5,192,420,0,{n:4,hit:3}),slam:LM_HAM({f0:2,n:3}),grabEnd:LM_HAM({f0:4,n:2}),grabFail:LM_HAM({f0:4,n:2}),
+    // воздушная серия (L2 по подброшенному): прыжок за противником — кадры апперкота; удары серии — кадры обычных ударов
+    grab:LS('upper',5,192,420,0,{n:4,hit:3}),
     // своих кадров броска нет: замах и швырок взяты из удара двумя руками
     throw:LM_HAM({n:2,hit:1}),throwHold:LM_HAM({f0:2,n:1}),throwEnd:LM_HAM({f0:3,n:3}),
     backdash:LS('backdash',6,242,395,0,{f0:1,n:4}),win:LS('win',5,220,401,8,{once:1})}});
@@ -697,7 +697,80 @@ function doThrow(a,d){
 }
 
 // ---------- захват: поймать за ноги и бить об пол ----------
+// ---------- воздушная серия ЛамаГёрл ----------
+// Вместо захвата коня: лама взлетает к подброшенному противнику и бьёт его в воздухе. Каждая верная кнопка QTE — сразу удар;
+// две фазы (3 и 5 кнопок), после второй — добивание двумя руками об пол с высоким отскоком. Ошибка или опоздание — оба падают.
+const RV={seq:[['k2','p1','k1'],['k2','k2','p1','k1','p2']],qt:[65,90],dmg:2.6,first:4,fin:9,an:{p1:'lbf',p2:'lhead',k1:'laxe',k2:'lknee'}};
+function startRave(a,d){
+  if(d.state!=='hit'){a.combo=0;a.comboDmg=0;a.usedSp=[];d.jug=0;d.usedWB=d.usedGB=false;}
+  a.usedSp.push('grab');d.jug++;
+  a.state='grab';a.vx=0;a.buf=newBuf();
+  a.gr={kind:'rave',n:0,t:0,phase:'rise',side:a.facing,qte:RV.seq[0],qi:0,qt:1,qmax:1,akey:'lupper',ht:0,jolt:0,
+    h:GY-a.y,h0:GY-a.y,h1:clamp(GY-d.y-10,120,185),dy0:d.y,dx0:d.x};
+  d.state='grabbed';d.vx=d.vy=0;d.wb=d.gbPending=false;d.alpha=1;
+  hitstop=3;snd('block');
+}
+function ravePlace(a,d){
+  const g=a.gr;
+  a.y=GY-g.h;d.x=clamp(a.x+g.side*(52+g.jolt),AL-20,AR+20);d.y=a.y-8-g.jolt*.6;
+  d.facing=1;d.grabRot=-(.3+g.jolt*.05)*g.side;
+}
+function endRave(a,d,full,ko){
+  const side=a.gr.side;
+  a.gr=null;a.facing=side;a.state='jump';a.vy=full?-6:0;a.vx=full?-side*2:0;a.airAtk=true;a.buf=newBuf();
+  d.grabRot=undefined;d.facing=-side;d.launched=true;if(d.y>=GY)d.y=GY-2;
+  if(ko){d.hp=0;d.state='ko';d.vy=6;d.vx=side*5;shake=16;endRound(a);return;}
+  d.state='hit';d.stateT=30;
+  if(full){d.vy=16;d.vx=side*1.5;d.usedGB=false;d.gbPending=true;} // добивание: об пол и высокий отскок — комбо можно продолжать
+  else{d.vy=-4;d.vx=side*4;}
+}
+function raveHit(a,d,base,heavy){
+  const g=a.gr,dmg=base*a.ch.power*Math.max(.15,1-.08*a.combo)*DMG;
+  a.combo++;a.comboT=110;a.maxCombo=Math.max(a.maxCombo||0,a.combo);a.comboDmg+=dmg;
+  d.hp-=dmg;d.flash=4;g.ht=9;g.jolt=7;
+  a.energy=Math.min(100,a.energy+2);
+  const hx=d.x-g.side*14,hy=d.y-95;
+  hitstop=heavy?6:2;shake=Math.max(shake,heavy?12:4);
+  burst(hx,hy,'#ffd24a',heavy?12:6);blood(hx,hy,g.side,heavy?28:12);snd('hit');voice(d,'v_hurt',heavy?1:.4);voice(a,'v_atk',heavy?1:.35);
+  if(!a.cpu)rumble(a.i,heavy);
+  if(!d.cpu&&!d.dummy)rumble(d.i,heavy);
+  if(d.hp<=0){if(G.mode===3)d.hp=1;else{endRave(a,d,false,true);return false;}}
+  return true;
+}
+function updRave(a,d){
+  const g=a.gr;a.vx=0;g.t++;
+  if(g.ht>0)g.ht--;
+  g.jolt*=.75;
+  if(g.phase==='rise'){ // взлёт к противнику, первый удар — без кнопок
+    const k=Math.min(1,g.t/10),e=k*(2-k);
+    g.h=g.h0+(g.h1-g.h0)*e;a.y=GY-g.h;
+    d.x=clamp(g.dx0+(a.x+g.side*52-g.dx0)*e,AL-20,AR+20);d.y=g.dy0+(GY-g.h1-8-g.dy0)*e;d.facing=1;d.grabRot=-.3*g.side*e;
+    if(k<1)return;
+    if(!raveHit(a,d,RV.first))return;
+    g.phase='qte';g.qi=0;g.qte=RV.seq[0];g.qt=g.qmax=RV.qt[0];
+  }else if(g.phase==='qte'){
+    g.h=Math.max(95,g.h-.3);ravePlace(a,d); // без ударов оба понемногу опускаются
+    if(--g.qt<=0)endRave(a,d,false);
+  }else if(g.phase==='gap'){ // пауза между фазами
+    ravePlace(a,d);
+    if(g.t>=14){g.n=1;d.jug++;g.phase='qte';g.qi=0;g.qte=RV.seq[1];g.qt=g.qmax=RV.qt[1];}
+  }else{ // добивание
+    ravePlace(a,d);
+    if(g.t>=14&&raveHit(a,d,RV.fin,true))endRave(a,d,true);
+  }
+}
+function ravePress(a,d,inp){
+  const g=a.gr;
+  for(const b of BTN){
+    if(!inp[b])continue;
+    if(b!==g.qte[g.qi]){endRave(a,d,false);return;}
+    g.qi++;g.akey=RV.an[b];g.h=Math.min(215,g.h+6);
+    if(!raveHit(a,d,RV.dmg))return;
+    if(g.qi>=g.qte.length){g.t=0;if(g.n===0)g.phase='gap';else{g.phase='fin';g.akey='lhammer';}return;}
+  }
+}
 function startGrab(a,d){
+  if(a.ch.rave){startRave(a,d);return;}
   if(d.state!=='hit'){a.combo=0;a.comboDmg=0;a.usedSp=[];d.jug=0;d.usedWB=d.usedGB=false;}
   a.usedSp.push('grab');
   a.state='grab';a.vx=0;a.buf=newBuf();
@@ -722,6 +795,7 @@ function endGrab(a,d,full,ko){
 }
 function updGrab(a,d){
   const g=a.gr;a.vx=0;
+  if(g.kind){updRave(a,d);return;}
   if(g.phase==='swing'){
     g.t++;
     const T=GR.sw[g.n],k=Math.min(1,g.t/T);
@@ -748,6 +822,7 @@ function updGrab(a,d){
 function qtePress(a,d,inp){
   const g=a.gr;
   if(a.state!=='grab'||!g||g.phase!=='qte')return;
+  if(g.kind){ravePress(a,d,inp);return;}
   for(const b of BTN){
     if(!inp[b])continue;
     if(b!==g.qte[g.qi]){endGrab(a,d,false);return;}
@@ -1519,7 +1594,7 @@ function drawSprite(f){
   const key=st==='attack'?(sp[f.mname]?f.mname:f.move.pose):st==='walk'&&f.running&&sp.run?'run':
     st==='hit'?(f.y<GY?'fall':f.crouching&&sp.chit?'chit':sp['hit_'+f.hitLv]?'hit_'+f.hitLv:'hit'):
     blk?(f.crouching&&sp.cblock?'cblock':'block'):st==='ko'?(f.y<GY?'fall':'down'):
-    st==='grab'&&sp.slam?'slam':st==='throw'&&sp.throwHold?'throwHold':st;
+    st==='grab'&&f.gr&&f.gr.kind?f.gr.akey:st==='grab'&&sp.slam?'slam':st==='throw'&&sp.throwHold?'throwHold':st;
   // смена анимации: отсчёт кадров с нуля; из приседа в присед (блок сидя, удар сидя) — без повторного приседания
   const lowNow=key==='crouch'||key==='cblock'||key==='chit'||(st==='attack'&&!!f.move.crouch);
   if(f.anKey!==key){
@@ -1543,6 +1618,7 @@ function drawSprite(f){
     else if(post)fr=h+1+Math.min(post-1,Math.floor((f.at-rc0)/Math.max(1,m.rc-3)*post)); // возврат
     else fr=m.air||f.at<rc0+(m.rc-3)*.6?h:0;
   }else if(key==='slam'){const g=f.gr;fr=g&&g.phase==='swing'&&GR.sw[g.n]?Math.min(n-1,Math.floor(g.t/GR.sw[g.n]*n)):n-1;}
+  else if(st==='grab'&&f.gr&&f.gr.kind){const g=f.gr,h=an.hit||0;fr=g.phase==='fin'?Math.min(Math.max(0,h-1),Math.floor(g.t/14*h)):g.ht>0?h:Math.max(0,h-1);}
   else if(own&&an.cyc)fr=Math.floor((((f.walkT/6.283)%1)+1)%1*n);
   else if(own&&an.vy)fr=f.vy<-9?2:f.vy<-3?3:f.vy<4?4:5;
   else if(own&&an.once)fr=Math.min(n-1,Math.floor(t*an.fps/60));
@@ -1651,8 +1727,8 @@ function hud(){
   else txt(String(Math.max(0,Math.ceil(G.timer/60))),W/2,56,40,G.timer<600?'#ff5a4a':'#fff');
 }
 function drawQTE(f){
-  const g=f.gr,n=g.qte.length,bw=46,x0=clamp(f.x-camX-n*bw/2,20,W-20-n*bw),y=GY-285;
-  txt(`ЖМИ! удар ${g.n+1} из 3`,x0+n*bw/2,y-12,18,'#ffd24a');
+  const g=f.gr,n=g.qte.length,bw=46,x0=clamp(f.x-camX-n*bw/2,20,W-20-n*bw),y=g.kind?Math.min(GY-70,f.y+34):GY-285; // у воздушной серии — под бойцами
+  txt(g.kind?`ЖМИ! каждая кнопка — удар · фаза ${g.n+1} из 2`:`ЖМИ! удар ${g.n+1} из 3`,x0+n*bw/2,y-12,18,'#ffd24a');
   for(let i=0;i<n;i++){
     const done=i<g.qi,cur=i===g.qi;
     ctx.fillStyle=done?'rgba(40,150,60,.9)':cur?'rgba(255,210,74,.95)':'rgba(0,0,0,.7)';
