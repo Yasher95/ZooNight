@@ -377,16 +377,22 @@ CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'
 const LS=(n,frames,cw,ch,fps,o)=>sheet('assets/lama_'+n+'.png',frames,cw,ch,fps,{pal:1,...o});
 const LM_HAM=(o)=>LS('hammer',6,306,428,0,o),LM_AXE=(o)=>LS('axe',5,260,410,0,o),LM_UP=LS('upper',5,192,420,0,{hit:3});
 CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:5.6,power:.95,special:'spit',pv:11,pc:'#c8e86a',voice:true,vp:'l_',
-  sp:{n:'spit',d:'wheel',b:'dropkick'},spn:{n:'плевок — снаряд',d:'колесо ↑↑',b:'удар двумя ногами →'},cp:'cpunch',
+  sp:{n:'spit',d:'wheel',b:'dropkick',g:'grab'},pm:{dmg:7,kb:4,akb:1,stun:18,type:'mid',chip:1,y0:95,y1:125,special:true,pop:11}, // плевок: в воздухе подкидывает, раз за комбо
+  gseq:[null,['k2','k1','p1'],['p2','p2','k2','k1','p1']],spn:{n:'плевок — снаряд',d:'колесо ↑↑',b:'удар двумя ногами →'},cp:'cpunch',
+  // серии длинные (до 5 ударов): лёгкие удары держат противника в воздухе, концовки подбрасывают, бьют об пол или в стену
   str:{
-    p1:'lbf','p1,p1':'lhead','p1,p1,p2':'lhammer','p1,p1,k1':'laxe','p1,p1,k1,k2':'lround',
-    'p1,k2':'lknee','p1,k2,p2':'lupper',
-    p2:'lhead','p2,p1':'lbf','p2,p1,k1':'lspin','p2,k2':'lknee','p2,k2,k1':'laxe','p2,k2,k1,p2':'lhammer',
-    k2:'lknee','k2,k2':'laxe','k2,k2,p2':'lupper','k2,p1':'lbf','k2,p1,k1':'lround',
-    k1:'laxe','k1,k1':'lspin','k1,p2':'lhead','k1,p2,p1':'lbf'},
-  sadv:{'p1,p1':1,'p2,p1':2,'p2,k2':2,'k2,p1':-2,'k1,p2':-3,'k1,p2,p1':3,'p1,k2':-4,'k2,k2':-6},
-  ai:[['p2','p1','k1'],['p1','p1','p2'],['p1','p1','k1','k2'],['k2','k2','p2'],['p1','k2','p2'],['k2','p1','k1'],['k1','k1'],['p2','k2','k1','p2']],
-  aij:[['p1','p1','k1','k2'],['k2','k2','p2'],['p2','p1','k1'],['k2','p1','k1']],
+    p1:'lbf','p1,p1':'lhead','p1,p1,p2':'lhammer',
+    'p1,p1,k2':'lknee','p1,p1,k2,k2':'laxe','p1,p1,k2,k2,p2':'lupper','p1,p1,k2,k1':'lround',
+    'p1,k2':'lknee','p1,k2,p1':'lhead','p1,k2,p1,k1':'lspin',
+    p2:'lhead','p2,p1':'lbf','p2,p1,k1':'lspin','p2,p1,k2':'lknee','p2,p1,k2,k1':'laxe','p2,p1,k2,k1,p2':'lhammer',
+    'p2,k2':'lknee','p2,k2,k2':'laxe','p2,k2,k2,p2':'lupper',
+    k2:'lknee','k2,k2':'laxe','k2,k2,p1':'lbf','k2,k2,p1,p1':'lhead','k2,k2,p1,p1,k1':'lround',
+    'k2,p1':'lbf','k2,p1,p2':'lhead','k2,p1,p2,k1':'lspin',
+    k1:'laxe','k1,k1':'lspin','k1,p2':'lhead','k1,p2,p1':'lbf','k1,p2,p1,k2':'lknee','k1,p2,p1,k2,p2':'lupper'},
+  sadv:{'p1,p1':1,'p2,p1':2,'p2,k2':2,'k2,p1':-2,'k1,p2':-3,'k1,p2,p1':3,'p1,k2':-4,'k2,k2':-6,'k2,k2,p1':1,'p2,p1,k2':-3},
+  ai:[['p2','p1','k1'],['p1','p1','p2'],['p1','p1','k2','k2','p2'],['p1','p1','k2','k1'],['p2','k2','k2','p2'],['k2','k2','p1','p1','k1'],
+    ['p1','k2','p1','k1'],['k1','k1'],['k1','p2','p1','k2','p2'],['p2','p1','k2','k1','p2'],['k2','p1','p2','k1']],
+  aij:[['p1','p1','k2','k2','p2'],['p2','k2','k2','p2'],['k2','k2','p1','p1','k1'],['p1','k2','p1','k1'],['k1','p2','p1','k2','p2'],['k2','p1','p2','k1']],
   desc:'Спрайт · плевок',scale:.5,sprite:{
     idle:LS('idle',8,196,399,10),
     walk:LS('walk',7,204,402,0,{cyc:1}),run:LS('run',8,240,402,0,{cyc:1,f0:2,n:6}),
@@ -403,6 +409,8 @@ CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',
     cpunch:LS('cpunch',8,312,291,0,{hit:4}),sweep:LS('sweep',7,582,283,0,{f0:4,n:3,hit:1}),
     jpunch:LS('jpunch',6,490,417,0,{f0:2,n:2,hit:1}),jkick:LS('jkick',6,394,420,0,{f0:3,n:1}),
     spit:LS('spit',6,196,384,0),wheel:LS('wheel',6,356,418,0,{hit:3}),dropkick:LS('dropkick',6,364,414,0,{hit:3}),
+    // захват в воздухе: прыжок за противником (кадры апперкота), удары об пол — молот двумя руками
+    grab:LS('upper',5,192,420,0,{n:4,hit:3}),slam:LM_HAM({f0:2,n:3}),grabEnd:LM_HAM({f0:4,n:2}),grabFail:LM_HAM({f0:4,n:2}),
     // своих кадров броска нет: замах и швырок взяты из удара двумя руками
     throw:LM_HAM({n:2,hit:1}),throwHold:LM_HAM({f0:2,n:1}),throwEnd:LM_HAM({f0:3,n:3}),
     backdash:LS('backdash',6,242,395,0,{f0:1,n:4}),win:LS('win',5,220,401,8,{once:1})}});
@@ -468,10 +476,10 @@ const M={
   grabFail:{su:0,ac:0,rc:24,pose:'hammer',special:true},
   throwEnd:{su:0,ac:0,rc:24,pose:'hammer',special:true},
   // ЛамаГёрл: свои удары серий, удар рукой сидя и спецприёмы (плевок — снаряд, колесо, удар двумя ногами)
-  lbf:    {su:4,ac:3,rc:8, dmg:3,reach:84, y0:120,y1:158,kb:3,  stun:15,type:'high',pose:'cross', adv:3},
-  lhead:  {su:4,ac:3,rc:9, dmg:5,reach:66, y0:104,y1:150,kb:3,  stun:17,type:'mid', pose:'hook',  adv:8},
-  lknee:  {su:5,ac:4,rc:10,dmg:5,reach:68, y0:60, y1:120,kb:3,  stun:17,type:'mid', pose:'knee',  adv:6},
-  laxe:   {su:7,ac:4,rc:13,dmg:7,reach:86, y0:110,y1:196,kb:4.5,stun:19,type:'high',pose:'hkick', adv:4},
+  lbf:    {su:4,ac:3,rc:8, dmg:3,reach:84, y0:120,y1:158,kb:3,  stun:15,type:'high',pose:'cross', adv:3,pop:5.6},
+  lhead:  {su:4,ac:3,rc:9, dmg:5,reach:66, y0:104,y1:150,kb:3,  stun:17,type:'mid', pose:'hook',  adv:8,pop:5.6},
+  lknee:  {su:5,ac:4,rc:10,dmg:5,reach:68, y0:60, y1:120,kb:3,  stun:17,type:'mid', pose:'knee',  adv:6,pop:6.2},
+  laxe:   {su:7,ac:4,rc:13,dmg:7,reach:86, y0:110,y1:196,kb:4.5,stun:19,type:'high',pose:'hkick', adv:4,pop:6.6},
   lhammer:{su:9,ac:4,rc:14,dmg:8,reach:78, y0:50, y1:180,kb:2,  stun:22,type:'over',pose:'hammer',adv:5,gb:true,heavy:true},
   lupper: {su:6,ac:5,rc:12,dmg:8,reach:72, y0:70, y1:210,kb:1.5,stun:20,type:'mid', pose:'upper', adv:5,launch:15,heavy:true},
   lround: {su:9,ac:5,rc:16,dmg:9,reach:98, y0:100,y1:175,kb:14, stun:22,type:'mid', pose:'hkick', adv:6,launch:6,wall:true,heavy:true},
@@ -733,7 +741,7 @@ function updGrab(a,d){
     if(d.hp<=0)d.hp=1;
     if(g.n>=3){endGrab(a,d,true);return;}
     g.phase='qte';g.qi=0;g.qt=g.qmax=GR.qt[g.n];
-    g.qte=GR.seq[g.n].slice(); // последовательности постоянные — их заучивают
+    g.qte=(a.ch.gseq||GR.seq)[g.n].slice(); // последовательности постоянные — их заучивают
   }else if(--g.qt<=0)endGrab(a,d,false);
 }
 // кнопки для следующего удара об пол: по порядку, ошибка — срыв
@@ -1102,7 +1110,7 @@ function world(live){
       if(frame%2===0)parts.push({x:p.x,y:p.y,vx:-p.vx*.2,vy:(Math.random()-.5)*2,life:12,col:p.col,size:4});
       const o=F[1-p.owner.i],hb=hurtbox(o);
       if(G.phase==='fight'&&vuln(o)&&p.x>hb.x-12&&p.x<hb.x+hb.w+12&&p.y>hb.y&&p.y<hb.y+hb.h){
-        p.dead=true;resolveHit(p.owner,o,PM,Math.sign(p.vx),true);
+        p.dead=true;resolveHit(p.owner,o,p.owner.ch.pm||PM,Math.sign(p.vx),true);
       }
       if(p.x<camX-30||p.x>camX+W+30)p.dead=true;
     }
