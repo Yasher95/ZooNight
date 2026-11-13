@@ -1,0 +1,328 @@
+{
+    "out":  "Y:\\priem_na_rabotu_v_gaymdev_2500$\\Fighter2D\\assets",
+    "overview":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\cut",
+    "jobs":  [
+                 {
+                     "frames":  4,
+                     "name":  "horseman_jab",
+                     "stand":  690,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\джеб.png"
+                 },
+                 {
+                     "frames":  4,
+                     "name":  "horseman_cross",
+                     "stand":  692,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\кросс.png"
+                 },
+                 {
+                     "frames":  3,
+                     "name":  "horseman_hook",
+                     "stand":  784,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\хук в корпус.png"
+                 },
+                 {
+                     "frames":  5,
+                     "name":  "horseman_backfist",
+                     "stand":  610,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\бэкфист.png"
+                 },
+                 {
+                     "frames":  8,
+                     "name":  "horseman_idle2",
+                     "stand":  462,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\айдл.png"
+                 },
+                 {
+                     "frames":  8,
+                     "anchor":  "box",
+                     "name":  "horseman_walk",
+                     "stand":  468,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\ходьба.png"
+                 },
+                 {
+                     "frames":  9,
+                     "anchor":  "box",
+                     "name":  "horseman_run",
+                     "stand":  384,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\бег.png"
+                 },
+                 {
+                     "frames":  8,
+                     "name":  "horseman_jump",
+                     "stand":  421,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\прыжок.png"
+                 },
+                 {
+                     "frames":  8,
+                     "name":  "horseman_crouch_in",
+                     "stand":  530,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\присяд.png"
+                 },
+                 {
+                     "frames":  3,
+                     "name":  "horseman_chit",
+                     "stand":  951,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\Пиксельный конный боец_ три кадра crouch.png"
+                 },
+                 {
+                     "frames":  6,
+                     "name":  "horseman_block",
+                     "stand":  563,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\блок.png"
+                 },
+                 {
+                     "frames":  8,
+                     "name":  "horseman_cblock_in",
+                     "stand":  588,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\переход в блок сидя.png"
+                 },
+                 {
+                     "frames":  7,
+                     "name":  "horseman_cblock",
+                     "stand":  666,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\вкл блок сидя.png"
+                 },
+                 {
+                     "frames":  3,
+                     "name":  "horseman_hit_high",
+                     "stand":  740,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\получения удара сверху.png"
+                 },
+                 {
+                     "frames":  3,
+                     "name":  "horseman_hit_mid",
+                     "stand":  855,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\получения удара центр.png"
+                 },
+                 {
+                     "frames":  3,
+                     "name":  "horseman_hit_low",
+                     "stand":  798,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\получения удара низ.png"
+                 },
+                 {
+                     "frames":  3,
+                     "anchor":  "box",
+                     "name":  "horseman_juggle",
+                     "stand":  800,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\воздушное жонглирование.png"
+                 },
+                 {
+                     "rows":  2,
+                     "name":  "horseman_fall",
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\падение.png",
+                     "stand":  447,
+                     "anchor":  "box",
+                     "frames":  11
+                 },
+                 {
+                     "baseline":  true,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_grab",
+                     "valley":  true,
+                     "frames":  8,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\grab.png",
+                     "erode":  3
+                 },
+                 {
+                     "baseline":  false,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_throw",
+                     "valley":  true,
+                     "frames":  8,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\throw.png",
+                     "erode":  3
+                 },
+                 {
+                     "baseline":  false,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_upper",
+                     "valley":  true,
+                     "frames":  5,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\апперкот.png",
+                     "erode":  3
+                 },
+                 {
+                     "baseline":  false,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_round",
+                     "valley":  true,
+                     "frames":  6,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\вертушка.png",
+                     "erode":  3
+                 },
+                 {
+                     "baseline":  false,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_kick",
+                     "valley":  true,
+                     "frames":  5,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\кик ногой.png",
+                     "erode":  3
+                 },
+                 {
+                     "baseline":  false,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_knee",
+                     "valley":  true,
+                     "frames":  5,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\колено.png",
+                     "erode":  3
+                 },
+                 {
+                     "baseline":  false,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_elbow",
+                     "valley":  true,
+                     "frames":  5,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\локоть.png",
+                     "erode":  3
+                 },
+                 {
+                     "baseline":  false,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_lowkick",
+                     "valley":  true,
+                     "frames":  3,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\лоу кик.png",
+                     "erode":  3
+                 },
+                 {
+                     "baseline":  false,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_mule",
+                     "valley":  true,
+                     "frames":  6,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\мул, лягание в стену.png",
+                     "erode":  3
+                 },
+                 {
+                     "baseline":  false,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_hammer",
+                     "valley":  true,
+                     "frames":  5,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\оверхэд.png",
+                     "erode":  3
+                 },
+                 {
+                     "baseline":  true,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_rise",
+                     "valley":  true,
+                     "frames":  6,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\райс, высокий подброс (вниз р2).png",
+                     "erode":  3
+                 },
+                 {
+                     "baseline":  false,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_sidekick",
+                     "valley":  true,
+                     "frames":  4,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\сайдкик.png",
+                     "erode":  3
+                 },
+                 {
+                     "baseline":  true,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_ram",
+                     "valley":  true,
+                     "frames":  6,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\таран р2.png",
+                     "erode":  3
+                 },
+                 {
+                     "baseline":  false,
+                     "dewhite":  10,
+                     "stand":  "f0",
+                     "name":  "horseman_hkick",
+                     "valley":  true,
+                     "frames":  5,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\хайкик по голове.png",
+                     "erode":  3
+                 },
+                 {
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\Новая папка\\деш назад.png",
+                     "name":  "horseman_backdash",
+                     "frames":  5,
+                     "stand":  "f0",
+                     "anchor":  "feet",
+                     "dewhite":  10,
+                     "erode":  3,
+                     "shed":  true,
+                     "valley":  true
+                 },
+                 {
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\Новая папка\\победная стойка.png",
+                     "name":  "horseman_win",
+                     "frames":  5,
+                     "stand":  "f0",
+                     "anchor":  "feet",
+                     "dewhite":  10,
+                     "erode":  3,
+                     "shed":  true,
+                     "valley":  true
+                 },
+                 {
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\Новая папка\\свип.png",
+                     "name":  "horseman_sweep",
+                     "frames":  5,
+                     "stand":  "f0",
+                     "anchor":  "feet",
+                     "dewhite":  10,
+                     "erode":  3,
+                     "shed":  true,
+                     "valley":  true
+                 },
+                 {
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\Новая папка\\удар ногой в прыжке.png",
+                     "name":  "horseman_jkick",
+                     "frames":  5,
+                     "stand":  "f-1",
+                     "anchor":  "box",
+                     "dewhite":  10,
+                     "erode":  3,
+                     "shed":  true,
+                     "valley":  true
+                 },
+                 {
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\атаки\\Новая папка\\удар рукой в прыжке.png",
+                     "name":  "horseman_jpunch",
+                     "frames":  5,
+                     "stand":  "f-1",
+                     "anchor":  "box",
+                     "dewhite":  10,
+                     "erode":  3,
+                     "shed":  true,
+                     "valley":  true
+                 }
+             ]
+}
