@@ -50,7 +50,7 @@ function padRead(g){
   let m=PADMAP.std;
   if(g.mapping==='standard')
     return{l:b(14)||ax<-.4,r:b(15)||ax>.4,u:b(12)||ay<-.6,d:b(13)||ay>.55,
-      p1:b(m.p1),p2:b(m.p2),k1:b(m.k1),k2:b(m.k2),blk:b(m.blk),run:b(m.run),s:b(m.s)||b(m.g),g:b(m.g),start:b(9),back:b(8),list:b(17)||b(10),
+      p1:b(m.p1),p2:b(m.p2),k1:b(m.k1),k2:b(m.k2),blk:b(m.blk),run:b(m.run),s:b(m.s)||b(m.g),g:b(m.g),start:b(9),back:b(8),list:b(17),demo:b(10),combo:b(11),
       fx:b(0),fo:b(1),fs:b(2),ft:b(3)};
   m=PADMAP.raw;
   // DInput-раскладка PlayStation: 0 квадрат, 1 крест, 2 круг, 3 треугольник; крестовина — «шляпа» на оси 9 или оси 6/7
@@ -59,7 +59,7 @@ function padRead(g){
   if(h!==undefined&&h>=-1.01&&h<=1.01){const k=Math.round((h+1)*3.5);hu=k===0||k===1||k===7;hr=k>=1&&k<=3;hd=k>=3&&k<=5;hl=k>=5&&k<=7;}
   if(g.axes.length>=8&&g.axes.length<10){hl=g.axes[6]<-.5;hr=g.axes[6]>.5;hu=g.axes[7]<-.5;hd=g.axes[7]>.5;}
   return{l:hl||ax<-.4,r:hr||ax>.4,u:hu||ay<-.6,d:hd||ay>.55,
-    p1:b(m.p1),p2:b(m.p2),k1:b(m.k1),k2:b(m.k2),blk:b(m.blk),run:b(m.run),s:b(m.s)||b(m.g),g:b(m.g),start:b(9),back:b(8),list:b(13)||b(10),
+    p1:b(m.p1),p2:b(m.p2),k1:b(m.k1),k2:b(m.k2),blk:b(m.blk),run:b(m.run),s:b(m.s)||b(m.g),g:b(m.g),start:b(9),back:b(8),list:b(13),demo:b(10),combo:b(11),
     fx:b(1),fo:b(2),fs:b(0),ft:b(3)};
 }
 function padScan(){
@@ -78,7 +78,7 @@ function padInput(i,merge){
   const cur={};
   for(const g of src){const c=padRead(g);for(const k in c)cur[k]=cur[k]||c[k];}
   const pv=padPrev[i];
-  for(const k of['p1','p2','k1','k2','s','start','back','list','fx','fo','fs','ft'])o[k]=cur[k]&&!pv[k];
+  for(const k of['p1','p2','k1','k2','s','start','back','list','demo','combo','fx','fo','fs','ft'])o[k]=cur[k]&&!pv[k];
   if(i===0&&(o.p1||o.p2||o.k1||o.k2||o.s||o.fx||o.fo||o.fs||o.ft||o.start))lastDev='pad';
   o.lE=cur.l&&!pv.l;o.rE=cur.r&&!pv.r;o.uE=cur.u&&!pv.u;o.dE=cur.d&&!pv.d;
   o.l=cur.l;o.r=cur.r;o.u=cur.u;o.d=cur.d;o.blk=cur.blk;o.run=cur.run;o.g=cur.g;
@@ -144,7 +144,7 @@ function ctlLabel(a,i=0){
   return pn(PADMAP[t][a],t);
 }
 const KS={tab:0,row:0,wait:false,msg:'',held:new Set()};
-const KRES=['Escape','Enter','Tab','Backspace','Delete','KeyM','KeyV','Digit1','Digit2','Digit3','Digit4'];
+const KRES=['Escape','Enter','Tab','Backspace','Delete','KeyM','KeyV','KeyC','KeyX','Digit1','Digit2','Digit3','Digit4'];
 addEventListener('keydown',e=>{
   if(G.phase!=='keys'||!KS.wait||KS.tab>1)return;
   e.preventDefault();pressed.delete(e.code);
@@ -569,7 +569,7 @@ function mkF(i,chi,cpu){
 }
 function startMatch(){
   F=[mkF(0,G.sel[0],false),mkF(1,G.sel[1],G.mode===1)];
-  if(G.mode===3){F[1].ch=DUMMY;F[1].dummy=true;G.dummy=0;G.log=[];G.list=true;}
+  if(G.mode===3){F[1].ch=DUMMY;F[1].dummy=true;G.dummy=0;G.log=[];G.list=true;TUT.i=-1;TUT.demo=false;TUT.ps=0;}
   if(G.mode===1)F[1].ai.skill=DIFF[G.diff][1];
   F[1].alt=F[0].ch===F[1].ch;
   G.round=1;startRound();
@@ -1169,9 +1169,9 @@ function world(live){
   if(hitstop>0){
     hitstop--;
     // нажатия во время стоп-кадра не теряются
-    if(live)F.forEach((f,i)=>{if(!f.cpu&&!f.dummy){feed(f,IN[i]);qtePress(f,F[1-i],IN[i]);}});
+    if(live)F.forEach((f,i)=>{if(!f.cpu&&!f.dummy&&!(TUT.demo&&i===0&&G.mode===3)){feed(f,IN[i]);qtePress(f,F[1-i],IN[i]);}});
   }else{
-    const ins=F.map((f,i)=>!live?EMPTY:f.dummy?DUMMY_IN[G.dummy||0]:f.cpu?aiInput(f,F[1-i]):IN[i]);
+    const ins=F.map((f,i)=>!live?EMPTY:TUT.demo&&i===0&&G.mode===3?tutorInput(f,F[1]):f.dummy?DUMMY_IN[G.dummy||0]:f.cpu?aiInput(f,F[1-i]):IN[i]);
     const k=frame&1; // порядок хода чередуется каждый кадр — ни у одной стороны нет преимущества
     updF(F[k],F[1-k],ins[k]);updF(F[1-k],F[k],ins[1-k]);
     resolvePending();
@@ -1271,9 +1271,105 @@ function tick(net){
   }
 }
 function toSelect(){G.phase='select';G.ok=[false,false];G.selT=0;snd('bell');}
+// ---------- обучение комбо (тренировка) ----------
+// Шаг комбо: серия ('p1,p1,k2'), спецприём ('@n' — нейтральный, '@d' — вниз, '@b' — назад) или захват / воздушная серия ('@g').
+// Спецприём и захват сразу после серии — отменой последнего удара. Комбо подобраны перебором и проверены ботом-исполнителем
+// (tutorInput): он же показывает комбо на экране. hits — сколько ударов выходит при чистом исполнении.
+const COMBOS={
+  HORSEMAN:[
+    {n:'базовое',hits:8,steps:['p1,p1,p2,k1','p1,p1,k2,k1']},
+    {n:'длинное',hits:15,steps:['p1,p1,p2,k1','p1,p1','p1,k2,p2','p1,p1,p2','@g']},
+    {n:'очень длинное',hits:22,steps:['p1,p1,p2,k1','p1,p1,p2','p1,p1,k2','@n','p1,p1,p2,k1','@g','p1,p1,p2,k1']},
+    {n:'самое длинное',hits:25,steps:['p1,p1,p2,k1','p1,p1','p1,k2,p2','p1,p1,p2,k1','@n','p1,p1,p2,k1','@g','p1,p1,p2','@d']}],
+  LAMAGIRL:[
+    {n:'базовое',hits:10,steps:['p1,p1,k2,k2,p2','p2,p1,k2,k1,p2']},
+    {n:'длинное',hits:15,steps:['p1,p1,k2,k2,p2','@g']},
+    {n:'очень длинное',hits:25,steps:['p1,p1,k2,k2,p2','p2,p1,k2,k1,p2','p1,p1,k2,k2,p2','@g']},
+    {n:'самое длинное',hits:35,steps:['p1,p1,k2,k2,p2','p1,p1,k2,k2','p2,p1,k2,k1,p2','p1,p1,k2,k2,p2','p1,p1,k2,k2,p2','@d','p1,p1,k2,k2,p2','@g']}]};
+const TUT={i:-1,ps:0,demo:false,st:null,doneT:0,hits:0,failT:0};
+const tutList=()=>COMBOS[F[0].ch.name]||[];
+function tutDemo(on){
+  TUT.demo=on;TUT.ps=0;
+  if(on){G.dummy=0;startRound();G.log=[];TUT.st={k:0,key:null,w:20};}
+}
+// бот-исполнитель: жмёт шаги комбо по порядку — следующую кнопку серии по попаданию, спецприём отменой, добегает до подброшенного
+function tutorInput(f,o){
+  const inp={},S=TUT.st,rc=tutList()[TUT.i].steps,fw=o.x>=f.x?'r':'l',bk=fw==='r'?'l':'r',dist=Math.abs(o.x-f.x);
+  const spInp=c=>{inp.s=1;if(c==='@d')inp.d=1;else if(c==='@b')inp[bk]=1;else if(c==='@g')inp.g=1;};
+  if(S.w>0)S.w--;
+  if(f.state==='grab'){const g=f.gr;if(g&&g.phase==='qte'&&S.w<=0){S.w=6;inp[g.qte[g.qi]]=1;}return inp;}
+  const cur=rc[S.k];
+  if(f.state==='attack'){
+    const key=f.mname+'|'+f.seq+'|'+S.k;
+    if(cur&&cur[0]!=='@'&&f.contactAt>=0&&S.key!==key&&!f.move.special&&!f.move.air){
+      S.key=key;
+      if(f.seq===cur){ // серия закончена: следующий шаг — спецприём или захват — отменой
+        S.k++;const nx=rc[S.k];
+        if(nx&&nx[0]==='@'&&(nx!=='@g'||o.y<GY-30)){spInp(nx);S.k++;}
+      }else if(cur.startsWith(f.seq+','))inp[cur.split(',')[f.seq.split(',').length]]=1;
+    }
+    return inp;
+  }
+  if(!FREE.includes(f.state)||f.y<GY)return inp;
+  if(S.k>0&&o.state!=='hit'){TUT.demo=false;return inp;} // противник вышел из комбо — показ окончен
+  if(!cur||S.w>0)return inp;
+  if(cur==='@g'){
+    if(dist>92){inp[fw]=1;inp.run=1;}else if(o.y<GY-30){spInp(cur);S.k++;S.w=8;}
+  }else if(dist>(S.k?100:92)){inp[fw]=1;if(S.k)inp.run=1;}
+  else if(cur[0]==='@'){spInp(cur);S.k++;S.w=8;}
+  else if(!S.k||GY-o.y<215){inp[cur.split(',')[0]]=1;S.w=8;}
+  return inp;
+}
+// прогресс игрока по шагам выбранного комбо
+function tutTrack(){
+  const list=tutList();
+  if(pressed.has('KeyC')||PAD[0].combo){TUT.i=TUT.i+1>=list.length?-1:TUT.i+1;TUT.ps=0;TUT.demo=false;TUT.doneT=0;}
+  if(TUT.i>=list.length)TUT.i=-1;
+  if(TUT.i<0){TUT.demo=false;return;}
+  if(pressed.has('KeyX')||PAD[0].demo)tutDemo(!TUT.demo);
+  const f=F[0],o=F[1],rc=list[TUT.i].steps,held=o.state==='hit'||o.state==='grabbed'||f.state==='grab';
+  if(TUT.ps<rc.length){
+    const c=rc[TUT.ps],nm=c[0]==='@'&&(f.ch.sp||{n:'ram',d:'rise',b:'mule'})[c[1]];
+    const ok=c==='@g'?f.state==='grab':c[0]==='@'?f.state==='attack'&&f.mname===nm&&(f.contactAt>=0||!!M[nm].proj):
+      f.state==='attack'&&f.seq===c&&f.contactAt>=0&&held;
+    if(ok)TUT.ps++;
+  }
+  if(TUT.ps>0&&!held&&f.state!=='attack'){
+    if(TUT.ps>=rc.length){TUT.doneT=frame+180;TUT.hits=f.combo;}
+    TUT.ps=0;
+  }
+}
+function tutStep(c,ch){
+  const l=ctlLabel;
+  if(c==='@g')return`${l('g')}  — ${ch.rave?'воздушная серия':'захват'} (QTE)`;
+  if(c[0]==='@'){
+    const nm=(ch.spn||{n:'таран',d:'подъём',b:'лягание'})[c[1]].replace(/ [↑→—].*$/,'');
+    return(c==='@d'?l('d')+' + ':c==='@b'?'назад + ':'')+l('s')+'  — '+nm;
+  }
+  return c.split(',').map(x=>l(x)).join(' ');
+}
+function drawTutor(){
+  const list=tutList(),x=52;let y=TUT.i<0?142:208; // панель — ниже счётчика комбо
+  if(!list.length)return;
+  if(TUT.i<0){txt('C / R3 — обучение комбо',x,y,13,'#9fd8ff','left',true);return;}
+  const cb=list[TUT.i],f=F[0];
+  ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(x-10,y-18,330,cb.steps.length*22+74);
+  txt(`КОМБО ${TUT.i+1} / ${list.length} · ${cb.n} · ${cb.hits} ударов`,x,y,15,'#ffd24a','left',true);y+=24;
+  cb.steps.forEach((c,i)=>{
+    const done=!TUT.demo&&i<TUT.ps,cur=TUT.demo?i===Math.min(TUT.st.k,cb.steps.length-1):i===TUT.ps;
+    txt(`${i+1}.`,x,y,15,done?'#7dff8a':cur?'#ffd24a':'#888','left',true);
+    txt((i&&c[0]!=='@'&&cb.steps[i-1][0]!=='@'?'догнать → ':i&&c[0]!=='@'?'→ ':'')+tutStep(c,f.ch),x+26,y,cur?17:15,done?'#7dff8a':cur?'#fff':'#bbb','left',true);
+    y+=22;
+  });
+  y+=4;
+  txt(TUT.demo?'ПОКАЗ — смотри на кнопки и ритм':'спецприём и захват после серии — отменой последнего удара',x,y,12,TUT.demo?'#ffd24a':'#aaa','left',true);y+=18;
+  txt('C / R3 — следующее · X / L3 — показать',x,y,12,'#9fd8ff','left',true);
+  if(TUT.doneT>frame)txt(`КОМБО ВЫПОЛНЕНО — ${TUT.hits} ударов!`,W/2,150,28,'#7dff8a');
+}
 function training(){
   const d=F[1];
-  for(const b of BK)if(IN[0][b]){G.log.push(ctlLabel(b==='s'&&IN[0].g?'g':b));if(G.log.length>16)G.log.shift();}
+  tutTrack();
+  for(const b of BK)if(IN[0][b]&&!TUT.demo){G.log.push(ctlLabel(b==='s'&&IN[0].g?'g':b));if(G.log.length>16)G.log.shift();}
   if(pressed.has('Digit1'))G.dummy=0;
   if(pressed.has('Digit2'))G.dummy=1;
   if(pressed.has('Digit3'))G.dummy=2;
@@ -1283,7 +1379,7 @@ function training(){
     const v=VTEST[G.vt=((G.vt===undefined?-1:G.vt)+1)%VTEST.length];
     samp(v[0],.9,1,v[1]);G.vtMsg=`голос ${G.vt+1}/${VTEST.length}: ${v[2]}`;G.vtT=frame+240;
   }
-  if(pressed.has('Backspace')||PAD[0].start){startRound();G.log=[];return;}
+  if(pressed.has('Backspace')||PAD[0].start){TUT.demo=false;TUT.ps=0;startRound();G.log=[];return;}
   d.idleT=['hit','down','bstun'].includes(d.state)?0:(d.idleT||0)+1;
   if(d.idleT>45)d.hp=Math.min(100,d.hp+3);
 }
@@ -1746,8 +1842,9 @@ function drawTraining(){
   txt(`макс. комбо: ${F[0].maxCombo}`,52,116,15,'#ddd','left',true);
   txt(`болванчик: ${['стоит','сидит','блок стоя','блок сидя'][G.dummy]}  [1 / 2 / 3 / 4]`,52,H-44,13,'#bbb','left',true);
   txt(G.log.join(' '),52,H-16,22,'#fff','left');
-  if(F[0].breakT>0)txt('СЕРИЯ СОРВАНА',52,H-66,20,'#ff5a4a','left');
-  txt('Backspace / Options — сброс · Tab / тачпад — список · V — прослушать голос · M — музыка · Esc / Create — меню',W-20,H-10,12,'#999','right',true);
+  if(F[0].breakT>0&&!TUT.demo)txt('СЕРИЯ СОРВАНА',52,H-66,20,'#ff5a4a','left');
+  drawTutor();
+  txt('Backspace / Options — сброс · Tab / тачпад — список · C / R3 — комбо · V — прослушать голос · M — музыка · Esc / Create — меню',W-20,H-10,12,'#999','right',true);
   if(G.vtT>frame)txt(G.vtMsg,W/2,112,16,'#9fd8ff','center',true);
   if(G.list){
     const ML=moveList(F[0].ch);
