@@ -144,7 +144,7 @@ function ctlLabel(a,i=0){
   return pn(PADMAP[t][a],t);
 }
 const KS={tab:0,row:0,wait:false,msg:'',held:new Set()};
-const KRES=['Escape','Enter','Tab','Backspace','Delete','KeyM','KeyV','KeyC','KeyX','Digit1','Digit2','Digit3','Digit4'];
+const KRES=['Escape','Enter','Tab','Backspace','Delete','KeyM','KeyV','KeyC','KeyX','KeyB','Digit1','Digit2','Digit3','Digit4'];
 addEventListener('keydown',e=>{
   if(G.phase!=='keys'||!KS.wait||KS.tab>1)return;
   e.preventDefault();pressed.delete(e.code);
@@ -1219,7 +1219,7 @@ function tick(net){
   if(G.phase==='menu'){
     if(pressed.has('Digit1')||pressed.has('Numpad1')||PAD[0].fx){G.mode=1;toSelect();}
     else if(pressed.has('Digit2')||pressed.has('Numpad2')||PAD[0].fo){G.mode=2;toSelect();}
-    else if(pressed.has('Digit3')||pressed.has('Numpad3')||PAD[0].ft){G.mode=3;G.sel=[CH.length-1,0];snd('bell');startMatch();}
+    else if(pressed.has('Digit3')||pressed.has('Numpad3')||PAD[0].ft){G.mode=3;G.sel=[GRID.includes(G.trainCh)?G.trainCh:GRID[0],0];snd('bell');startMatch();}
     else if(pressed.has('Digit4')||pressed.has('Numpad4')||PAD[0].fs){G.phase='net';NET.ui='';NET.msg='';snd('bell');}
     else if(pressed.has('Digit5')||pressed.has('Numpad5')||PAD[0].start){G.phase='keys';KS.tab=lastDev==='pad'?2:0;KS.row=0;KS.wait=false;KS.msg='';snd('bell');}
     return;
@@ -1379,6 +1379,10 @@ function training(){
   if(pressed.has('KeyV')){ // прослушка озвучки по очереди: видно, какой звук на какую роль назначен
     const v=VTEST[G.vt=((G.vt===undefined?-1:G.vt)+1)%VTEST.length];
     samp(v[0],.9,1,v[1]);G.vtMsg=`голос ${G.vt+1}/${VTEST.length}: ${v[2]}`;G.vtT=frame+240;
+  }
+  if(pressed.has('KeyB')||(PAD[0].start&&PAD[0].run)){ // смена бойца: по кругу среди доступных
+    const pl=GRID.filter(c=>c>=0);G.sel[0]=G.trainCh=pl[(pl.indexOf(G.sel[0])+1)%pl.length];
+    const ls=G.list;startMatch();G.list=ls;snd('bell');return;
   }
   if(pressed.has('Backspace')||PAD[0].start){TUT.demo=false;TUT.ps=0;startRound();G.log=[];return;}
   d.idleT=['hit','down','bstun'].includes(d.state)?0:(d.idleT||0)+1;
@@ -1843,7 +1847,8 @@ function drawTraining(){
   txt(`макс. комбо: ${F[0].maxCombo}`,52,116,15,'#ddd','left',true);
   txt(`болванчик: ${['стоит','сидит','блок стоя','блок сидя'][G.dummy]}  [1 / 2 / 3 / 4]`,52,H-44,13,'#bbb','left',true);
   txt(G.log.join(' '),52,H-16,22,'#fff','left');
-  if(F[0].breakT>0&&!TUT.demo)txt('СЕРИЯ СОРВАНА',52,H-66,20,'#ff5a4a','left');
+  if(F[0].breakT>0&&!TUT.demo)txt('СЕРИЯ СОРВАНА',52,H-86,20,'#ff5a4a','left');
+  txt(`боец: ${F[0].ch.name}  [B · геймпад: бег + Options — сменить]`,52,H-62,13,'#9fd8ff','left',true);
   drawTutor();
   txt('Backspace / Options — сброс · Tab / тачпад — список · C / R3 — комбо · V — прослушать голос · M — музыка · Esc / Create — меню',W-20,H-10,12,'#999','right',true);
   if(G.vtT>frame)txt(G.vtMsg,W/2,112,16,'#9fd8ff','center',true);
@@ -1866,7 +1871,7 @@ function drawMenu(){
   txt('файтинг в баре',W/2,152,22,'#e8e8e8');
   txt('[1] / ✕   Игрок против компьютера',W/2,196,24,'#fff');
   txt('[2] / ○   Два игрока',W/2,226,24,'#fff');
-  txt('[3] / △   Тренировка (HorseMan)',W/2,256,24,'#ffd24a');
+  txt('[3] / △   Тренировка',W/2,256,24,'#ffd24a');
   txt('[4] / □   Игра по сети',W/2,286,24,'#7dff8a');
   txt('[5] / Options   Управление',W/2,316,24,'#9fd8ff');
   const y=376;
