@@ -224,7 +224,7 @@ function moveList(){
   sp(`${l('s')} — таран ↑`,'ram');sp(`${l('d')} + ${l('s')} — подъём ↑↑`,'rise');sp(`назад + ${l('s')} — лягание →`,'mule');
   rows.push(
     `${l('g')} — захват в воздухе, об пол ×3`,`${l('g')} вблизи — бросок (выход — ${l('g')})`,
-    `${l('blk')} + ${l('s')} под ударами — срыв комбо`,`${l('run')} + назад — отскок`);
+    `${l('run')} + назад — отскок`);
   rows.adv=adv;
   return rows;
 }
@@ -629,14 +629,6 @@ function doThrow(a,d){
     else{d.hp=0;d.state='ko';shake=16;endRound(a);}
   }
 }
-// срыв комбо (R1+R2 во время получения урона): половина шкалы, раз за раунд
-function breaker(f,o){
-  const s=o.x>=f.x?1:-1;
-  f.energy-=BREAK_COST;f.brUsed=true;f.buf=newBuf();
-  o.state='hit';o.stateT=26;o.vx=s*9;o.vy=-6;if(o.y>=GY)o.y=GY-1;o.launched=true;o.jug=0;o.combo=0;o.alpha=1;
-  f.state=f.y<GY?'jump':'idle';f.vx=-s*3;f.launched=false;f.wb=f.gbPending=false;f.flash=8;f.airAtk=true;f.tInv=8;
-  hitstop=8;shake=Math.max(shake,12);burst(f.x,f.y-90,'#66ccff',26,8);snd('ko');
-}
 
 // ---------- захват: поймать за ноги и бить об пол ----------
 function startGrab(a,d){
@@ -777,7 +769,6 @@ function updF(f,o,inp){
   for(const b of BK)if(!inp[b]&&f.buf[b]>0)f.buf[b]--;
   if(f.state==='thrown'){if(f.buf.s>0&&inp.g&&o.state==='throw')techThrow(o,f);return;} // выход из броска — L2 в окне
   if(f.state==='throw'){f.vx=0;if(++f.thT>TECH_WIN)doThrow(f,o);return;}
-  if(f.state==='hit'&&inp.blk&&f.buf.s>0&&!inp.g&&f.energy>=BREAK_COST&&!f.brUsed&&G.phase==='fight'&&G.mode!==3)breaker(f,o);
   if(f.state==='grabbed')return; // положением управляет тот, кто держит
   if(f.state==='grab'){qtePress(f,o,inp);if(f.state==='grab')updGrab(f,o);return;}
   const ground=f.y>=GY,anyP=f.buf.p1>0||f.buf.p2>0,anyK=f.buf.k1>0||f.buf.k2>0;
@@ -929,8 +920,7 @@ function aiInput(f,o){
     return inp;
   }
   ai.tech=undefined;
-  if(f.state==='hit'){ // срыв чужого комбо за шкалу
-    if(f.energy>=BREAK_COST&&!f.brUsed&&o.combo>=5&&f.hp<40&&R()<.012*sk){inp.blk=1;inp.s=1;}
+  if(f.state==='hit'){
     return inp;
   }
   if(f.state==='down'){ // вставание с перекатом
@@ -1545,7 +1535,7 @@ function hud(){
     ctx.fillStyle='#f0f0f0';ctx.fillRect(L?x+w-a:x,30,a,22);
     ctx.fillStyle=f.hp<25?'#e33b2e':f.hp<50?'#e8b92e':'#3fcf4a';ctx.fillRect(L?x+w-b:x,30,b,22);
     ctx.fillStyle='#000';ctx.fillRect(x-2,57,w+4,9);
-    ctx.fillStyle=f.energy>=BREAK_COST?'#4ad8ff':f.energy>=SP_COST?'#3aa6c8':'#2a6a85';
+    ctx.fillStyle=f.energy>=SP_COST?'#3aa6c8':'#2a6a85';
     const e=f.energy/100*w;ctx.fillRect(L?x+w-e:x,59,e,5);
     ctx.fillStyle='#000';for(let k=1;k<4;k++)ctx.fillRect(x+w*k/4-1,58,2,7); // деления по 25: спецприём — 1, срыв — 2
     txt(f.ch.name+(f.cpu?' (ИИ)':''),L?x:x+w,88,20,'#fff',L?'left':'right');
