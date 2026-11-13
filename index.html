@@ -601,8 +601,6 @@ function resolvePending(){
 // ---------- бросок (L2 по стоящему): пробивает блок, проигрывает удару и прыжку, из него можно выйти ----------
 // DMG — общий множитель урона: меньше урона за касание = больше разменов за раунд = результат зависит от игры, а не от одного попадания
 const TECH_WIN=10,BREAK_COST=50,DMG=.72;
-// GUARD_K — сколько шкалы блока снимает единица урона; GUARD_REGEN — восстановление за кадр вне блока
-const GUARD_K=2.2,GUARD_REGEN=.35;
 const DIFF=[['ЛЁГКИЙ',.35],['СРЕДНИЙ',.6],['СЛОЖНЫЙ',.8],['МАСТЕР',.95]];
 function throwable(o){return o.y>=GY&&!o.tInv&&['idle','walk','crouch','block','attack'].includes(o.state);}
 function startThrow(a,d){
@@ -732,13 +730,6 @@ function resolveHit(a,d,m,dir,isProj,ender){
     if(G.mode===3&&!isProj){a.msg=(adv>0?'+':adv<0?'−':'')+Math.abs(adv)+' в блоке';a.msgC=advCol(adv);a.msgT=frame+50;}
     d.hp=Math.max(1,d.hp-(m.chip||0));
     a.energy=Math.min(100,a.energy+1);d.energy=Math.min(100,d.energy+2);
-    // шкала блока: каждый принятый удар её съедает; на нуле — пробитие, долгое оглушение
-    d.guard-=(m.dmg||6)*GUARD_K;
-    if(d.guard<=0){
-      d.guard=100;d.state='hit';d.stateT=45;d.vx=dir*2;d.flash=8;d.launched=false;d.jug=0;
-      a.combo=0;a.comboDmg=0;a.usedSp=[];
-      hitstop=8;shake=Math.max(shake,12);burst(hx,hy,'#e8b92e',24,8);snd('ko');return;
-    }
     if(!isProj)a.vx-=dir*2;
     burst(hx,hy,'#cfe0ff',6,4);snd('block');hitstop=3;return;
   }
@@ -778,7 +769,6 @@ function updF(f,o,inp){
   if(G.mode===3)f.energy=Math.min(100,f.energy+2);
   if(f.tInv>0)f.tInv--;
   if(f.bdCd>0)f.bdCd--;
-  if(f.state!=='block'&&f.state!=='bstun')f.guard=Math.min(100,f.guard+GUARD_REGEN);
   if(f.flash>0)f.flash--;
   if(f.breakT>0)f.breakT--;
   if(f.comboT>0&&--f.comboT===0)f.combo=0;
@@ -1558,10 +1548,6 @@ function hud(){
     ctx.fillStyle=f.energy>=BREAK_COST?'#4ad8ff':f.energy>=SP_COST?'#3aa6c8':'#2a6a85';
     const e=f.energy/100*w;ctx.fillRect(L?x+w-e:x,59,e,5);
     ctx.fillStyle='#000';for(let k=1;k<4;k++)ctx.fillRect(x+w*k/4-1,58,2,7); // деления по 25: спецприём — 1, срыв — 2
-    // шкала блока — с внешнего края
-    const gw=w*.35,gv=gw*clamp(f.guard,0,100)/100;
-    ctx.fillStyle='#000';ctx.fillRect((L?x:x+w-gw)-2,67,gw+4,6);
-    ctx.fillStyle=f.guard<35?'#ff5a4a':'#e8b92e';ctx.fillRect(L?x:x+w-gv,68,gv,4);
     txt(f.ch.name+(f.cpu?' (ИИ)':''),L?x:x+w,88,20,'#fff',L?'left':'right');
     for(let k=0;k<2;k++){
       const px=L?x+w-12-k*22:x+12+k*22;
