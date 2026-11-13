@@ -213,15 +213,19 @@ function drawKeys(){
 }
 // список приёмов с теми кнопками, на которых игрок играет
 function moveList(){
-  const l=ctlLabel;
+  const l=ctlLabel,adv=[[],[],[],[]];
   const rows=Object.keys(STR).filter(k=>!Object.keys(STR).some(o=>o.startsWith(k+',')))
-    .map(k=>{const b=k.split(',');return b.map(x=>l(x)).join(' ')+'  '+b.map((_,i)=>LV[M[STR[b.slice(0,i+1).join(',')]].type]).join('')+moveTag(M[STR[k]]);});
-  rows.unshift('В верх · С середина · Н низ · О оверхед','блок стоя: В С О · блок сидя: В С Н','');
-  rows.push('',`назад + ${l('p2')} — оверхед (О), отскок от пола`,'удары в прыжке — оверхед (О)',
-    `${l('d')} + ${l('p1')}/${l('p2')} — апперкот, подброс`,`${l('d')} + ${l('k1')}/${l('k2')} — подсечка`,'',
-    `${l('s')} — таран, подброс`,`${l('d')} + ${l('s')} — подъём, высокий подброс`,`назад + ${l('s')} — лягание, в стену`,
+    .map(k=>{const b=k.split(','),ks=b.map((_,i)=>b.slice(0,i+1).join(','));adv.push(ks.map(s=>advOf(s,M[STR[s]])));
+      return b.map(x=>l(x)).join(' ')+'  '+ks.map(s=>LV[M[STR[s]].type]).join('')+moveTag(M[STR[k]]).replace(' — подброс',' ↑').replace(' — отскок от пола',' ↓').replace(' — в стену',' →');});
+  rows.unshift('В верх · С середина · Н низ · О оверхед','блок стоя: В С О · блок сидя: В С Н','цифры — в блоке: + ты первый · − ты открыт','↑ подброс · ↓ отскок от пола · → в стену');
+  const sp=(s,n)=>{rows.push(s);adv[rows.length-1]=[M[n].badv];};
+  rows.push('');sp(`назад + ${l('p2')} — оверхед (О), отскок`,'smash');rows.push('удары в прыжке — оверхед (О)');
+  sp(`${l('d')} + ${l('p1')}/${l('p2')} — апперкот ↑`,'upper');sp(`${l('d')} + ${l('k1')}/${l('k2')} — подсечка`,'sweep');rows.push('');
+  sp(`${l('s')} — таран ↑`,'ram');sp(`${l('d')} + ${l('s')} — подъём ↑↑`,'rise');sp(`назад + ${l('s')} — лягание →`,'mule');
+  rows.push(
     `${l('g')} — захват в воздухе, об пол ×3`,`${l('g')} вблизи — бросок (выход — ${l('g')})`,
     `${l('blk')} + ${l('s')} под ударами — срыв комбо`,`${l('run')} + назад — отскок`);
+  rows.adv=adv;
   return rows;
 }
 const kbLine=i=>{const k=KEYS[i];return`${kn(k.l)} / ${kn(k.r)} · ${kn(k.u)} прыжок · ${kn(k.d)} присед · ${kn(k.p1)} рука 1 · ${kn(k.p2)} рука 2 · ${kn(k.k1)} нога 1 · ${kn(k.k2)} нога 2 · ${kn(k.blk)} блок · ${kn(k.run)} бег · ${kn(k.s)} спец · ${kn(k.g)} захват`;};
@@ -232,11 +236,20 @@ let ac=null;
 function audioInit(){
   if(!ac){try{ac=new AudioContext();loadAudio();}catch(e){}}
   else if(ac.state==='suspended')ac.resume().catch(()=>{});
-  if(MUSIC.paused&&!musicOff)MUSIC.play().catch(()=>{});
+  musicSync();
 }
 // музыка локации: зациклена, M — выключить / включить
 const MUSIC=new Audio('assets/audio/music_bar.mp3');MUSIC.loop=true;MUSIC.volume=.28;
+const MUSIC_SEL=new Audio('assets/audio/music_select.mp3');MUSIC_SEL.loop=true;MUSIC_SEL.volume=.32;
 let musicOff=false;
+// на экране выбора бойца играет своя музыка, в остальное время — музыка локации
+function musicSync(){
+  if(!ac)return;
+  const sel=G.phase==='select',on=sel?MUSIC_SEL:MUSIC,off=sel?MUSIC:MUSIC_SEL;
+  if(!off.paused)off.pause();
+  if(musicOff){if(!on.paused)on.pause();}
+  else if(on.paused){if(sel)on.currentTime=0;on.play().catch(()=>{});}
+}
 // сэмплы: в каждом файле несколько звуков подряд — играется кусок [файл, начало, конец] в секундах.
 // v_* — голос HorseMan: atk — удар, sp — спецприём, hurt — получил удар, ko — нокаут, win — победа
 const SAMP={
@@ -246,7 +259,8 @@ const SAMP={
   v_sp:[['voice1',2.18,2.73]],
   v_hurt:[['voice2',3.01,3.46],['voice4',3.61,4.03]],
   v_ko:[['voice3',3.15,3.79]],
-  v_win:[['voice_win',3.05,6.64]]
+  v_win:[['voice_win',3.05,6.64]],
+  ui_sel:[['ui_select',.44,.83]]
 };
 const VTEST=[['v_atk',0,'удар (вариант 1) — horseman1, 1-й звук'],['v_atk',1,'удар (вариант 2) — horseman1, 3-й звук'],
   ['v_sp',0,'спецприём — horseman1, 2-й звук'],['v_hurt',0,'получил удар (вариант 1) — horseman2'],
@@ -412,9 +426,13 @@ const M={
   throwEnd:{su:0,ac:0,rc:24,pose:'hammer',special:true}
 };
 // преимущество в блоке (кадры): до -2 безопасно, от -5 и ниже наказывается
-const BADV={jab:-1,cross:-2,hook:-3,backfist:-4,elbow:-3,upper2:-13,hammer:-7,kick:-3,sidekick:-4,lowkick:-4,knee:-3,
+const BADV={jab:1,cross:-2,hook:-3,backfist:-4,elbow:-3,upper2:-13,hammer:-7,kick:-2,sidekick:-6,lowkick:-4,knee:-3,
   riseknee:-13,hkick:-5,round:-11,upper:-13,sweep:-13,dash:-14,ram:-15,rise:-20,mule:-12};
 for(const k in BADV)M[k].badv=BADV[k];
+// у серий своё преимущество: плюсовые серии продолжают давление, минусовые оставляют открытым
+const SADV={'p1,p1,p2':2,'p2,p1':1,'p2,k2':3,'k2,k2':-4,'k2,k2,p1':2,'k1,p2':-2,'k1,p2,p1':4,'k2,p1':-3};
+const advCol=a=>a>0?'#7dff8a':a<=-5?'#ff7a6a':'#cfcfcf';
+const advTxt=a=>(a>0?'+':a<0?'−':'')+Math.abs(a);
 // удары достают дальше и сильнее продвигают вперёд — начать атаку можно не вплотную
 for(const k in M){const m=M[k];if(m.dmg&&!m.air&&!m.special){m.reach=Math.round(m.reach*1.16);m.adv=(m.adv||0)+3;}}
 for(const k of['ram','rise','mule','dash'])M[k].chip=1.5; // спецприёмы немного пробивают блок
@@ -512,6 +530,15 @@ function endRound(w,timeout){
 // ---------- логика бойца ----------
 // BUF — сколько кадров живёт нажатие; CANCEL_WIN — окно отмены после попадания; LOCK_PEN — штраф к восстановлению за сбой
 const BUF=12,CANCEL_WIN=6,LOCK_PEN=6;
+// промах: чем длиннее серия ушла в воздух, тем дольше боец открыт (по номеру удара в серии)
+const SREC=[0,2,5,8,10];
+function recov(f){
+  const m=f.move;let r=m.rc+(f.locked?LOCK_PEN:0);
+  if(!m.special&&!m.air&&f.seq&&!f.res)r+=SREC[Math.min(4,f.seq.split(',').length)];
+  return r;
+}
+// преимущество в блоке: у серии своё (SADV), иначе — у удара (badv). Плюс — атакующий ходит первым, минус — открыт
+const advOf=(seq,m)=>seq&&SADV[seq]!==undefined?SADV[seq]:m.badv!==undefined?m.badv:-3;
 function breakString(f){if(!f.locked){f.locked=true;f.breakT=45;}}
 // приём нажатий. Во время удара лишняя, неверная или запоздалая кнопка срывает серию.
 function feed(f,inp){
@@ -519,7 +546,7 @@ function feed(f,inp){
     if(!inp[b])continue;
     if(b==='s')f.sDir=inp.g?'g':inp.d?'d':(f.facing>0?inp.l:inp.r)?'b':'n';
     if(f.state==='attack'&&!f.move.air){
-      const m=f.move,total=m.su+m.ac+m.rc+(f.locked?LOCK_PEN:0);
+      const m=f.move,total=m.su+m.ac+recov(f);
       if(f.at>=total-4){f.buf=newBuf();f.buf[b]=6;f.keepBuf=true;continue;} // под самый конец — ввод следующего удара
       if(!m.special){
         const pending=BK.some(k=>f.buf[k]>0);
@@ -532,7 +559,7 @@ function feed(f,inp){
   }
 }
 function startMove(f,name,seq){
-  f.state='attack';f.move=M[name];f.mname=name;f.seq=seq||'';f.at=0;f.hitDone=false;f.contactAt=-1;
+  f.state='attack';f.move=M[name];f.mname=name;f.seq=seq||'';f.at=0;f.hitDone=false;f.contactAt=-1;f.res=0;
   f.locked=false;f.keepBuf=false;
   if(!f.move.air)f.vx=f.facing*(f.move.adv||0);
   f.buf=newBuf();f.running=false;snd('swing');
@@ -695,11 +722,14 @@ function resolveHit(a,d,m,dir,isProj,ender){
   const guarding=(d.state==='block'||d.state==='bstun')&&d.facing===-dir&&d.y>=GY;
   const canBlock=guarding&&(m.type==='low'?d.crouching:m.type==='over'?!d.crouching:true);
   const hx=d.x-dir*22,hy=d.y-clamp((m.y0+m.y1)/2,20,160);
-  if(guarding&&!canBlock){d.msg=m.type==='low'?'НИЗ!':'ОВЕРХЕД!';d.msgT=frame+45;}
+  if(guarding&&!canBlock){d.msg=m.type==='low'?'НИЗ!':'ОВЕРХЕД!';d.msgC='';d.msgT=frame+45;}
   if(!canBlock){d.hitLv=m.type==='low'?'low':m.type==='mid'?'mid':'high';d.anKey=null;}
+  if(!isProj)a.res=1;
   if(canBlock){
-    // преимущество в блоке у каждого удара своё (badv): лёгкие безопасны, подбросы и спецприёмы наказуемы
-    d.state='bstun';d.stateT=Math.max(3,rem+(m.badv!==undefined?m.badv:-3));d.vx=dir*5;
+    // преимущество в блоке у каждого удара и серии своё: одни дают плюс, после других боец открыт
+    const adv=advOf(isProj?'':a.seq,m);
+    d.state='bstun';d.stateT=Math.max(3,rem+adv);d.vx=dir*5;
+    if(G.mode===3&&!isProj){a.msg=(adv>0?'+':adv<0?'−':'')+Math.abs(adv)+' в блоке';a.msgC=advCol(adv);a.msgT=frame+50;}
     d.hp=Math.max(1,d.hp-(m.chip||0));
     a.energy=Math.min(100,a.energy+1);d.energy=Math.min(100,d.energy+2);
     // шкала блока: каждый принятый удар её съедает; на нуле — пробитие, долгое оглушение
@@ -820,7 +850,7 @@ function updF(f,o,inp){
           burst(f.x,f.y-90,f.ch.accent,14,5);snd('proj');
         }
       }
-      if(f.at>=m.su+m.ac+m.rc+(f.locked?LOCK_PEN:0)){
+      if(f.at>=m.su+m.ac+recov(f)){
         f.state=m.crouch?'crouch':'idle';f.alpha=1;
         if(!f.keepBuf)f.buf=newBuf(); // нажатия, сделанные во время удара, в нейтраль не переносятся
         f.keepBuf=false;
@@ -1065,16 +1095,17 @@ function tick(net){
       if(i===1&&G.mode===1)continue;
       const n=IN[i];
       if(!G.ok[i]){
-        if(n.lE)G.sel[i]=(G.sel[i]+CH.length-1)%CH.length;
-        if(n.rE)G.sel[i]=(G.sel[i]+1)%CH.length;
+        const dx=(n.rE?1:0)-(n.lE?1:0),dy=dx?0:(n.dE?1:0)-(n.uE?1:0);
+        if(dx||dy){const s=selMove(G.sel[i],dx,dy);if(s!==G.sel[i]){G.sel[i]=s;samp('ui_sel',.8,1,0);}}
         if(n.p1||n.p2||n.k1||n.k2||PAD[i].start||(!net&&i===0&&pressed.has('Enter'))){G.ok[i]=true;snd('bell');}
       }
     }
     if(G.mode===1&&!G.ok[0]){
-      if(IN[0].uE)G.diff=(G.diff+1)%DIFF.length;
-      if(IN[0].dE)G.diff=(G.diff+DIFF.length-1)%DIFF.length;
+      const b=(IN[0].blk?1:0)-(IN[0].run?1:0); // сложность — кнопками блока и бега (стрелки заняты сеткой)
+      if(b&&!G.dPrev){G.diff=(G.diff+b+DIFF.length)%DIFF.length;samp('ui_sel',.6,1.2,0);}
+      G.dPrev=b;
     }
-    if(G.mode===1&&G.ok[0]&&!G.ok[1]){G.sel[1]=Math.random()*CH.length|0;G.ok[1]=true;}
+    if(G.mode===1&&G.ok[0]&&!G.ok[1]){G.sel[1]=Math.random()*CH.length|0;G.ok[1]=true;samp('ui_sel',.8,1,0);}
     if(G.ok[0]&&G.ok[1]&&++G.selT>40)startMatch();
     return;
   }
@@ -1121,7 +1152,7 @@ function training(){
   if(d.idleT>45)d.hp=Math.min(100,d.hp+3);
 }
 
-function musicKey(){if(pressed.has('KeyM')){musicOff=!musicOff;if(musicOff)MUSIC.pause();else MUSIC.play().catch(()=>{});}}
+function musicKey(){if(pressed.has('KeyM'))musicOff=!musicOff;musicSync();}
 
 // ---------- игра по сети ----------
 // Браузеры соединяются напрямую (WebRTC через PeerJS), сервер нужен только чтобы найти друг друга по коду комнаты.
@@ -1537,7 +1568,7 @@ function hud(){
       ctx.fillStyle='#000';ctx.beginPath();ctx.arc(px,80,8,0,7);ctx.fill();
       ctx.fillStyle=k<f.wins?'#ffd24a':'#444';ctx.beginPath();ctx.arc(px,80,5.5,0,7);ctx.fill();
     }
-    if(f.msgT>frame)txt(f.msg,f.x-camX,f.y-215-(45-(f.msgT-frame))*.5,22,'#ff5a4a'); // блок пробит не тем уровнем
+    if(f.msgT>frame)txt(f.msg,f.x-camX,f.y-215-(45-(f.msgT-frame))*.5,22,f.msgC||'#ff5a4a'); // блок пробит не тем уровнем / преимущество в блоке (тренировка)
     if(f.combo>=2){
       const n=f.combo,w10=n%10,w100=n%100;
       const word=w10===1&&w100!==11?'УДАР':w10>=2&&w10<=4&&(w100<12||w100>14)?'УДАРА':'УДАРОВ';
@@ -1574,8 +1605,15 @@ function drawTraining(){
   if(G.vtT>frame)txt(G.vtMsg,W/2,112,16,'#9fd8ff','center',true);
   if(G.list){
     const ML=moveList();
-    ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(W-270,96,260,ML.length*16+12);
-    ML.forEach((s,i)=>{if(s)txt(s,W-262,113+i*16,12,i<2?'#9fd8ff':/подброс|пола|стену/.test(s)?'#ffe08a':'#eee','left',true);});
+    ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(W-322,96,312,ML.length*16+12);
+    ML.forEach((s,i)=>{
+      if(!s)return;
+      const y=113+i*16;
+      txt(s,W-314,y,12,i<4?'#9fd8ff':/[↑↓→]/.test(s)?'#ffe08a':'#eee','left',true);
+      // преимущество в блоке: зелёный — плюс, красный — открыт для ответа
+      let x=W-16;
+      for(const a of(ML.adv[i]||[]).slice().reverse()){const v=advTxt(a);txt(v,x,y,12,advCol(a),'right',true);x-=ctx.measureText(v).width+7;}
+    });
   }
 }
 function drawMenu(){
@@ -1596,26 +1634,60 @@ function drawMenu(){
   txt('Присед + рука — апперкот · присед + нога — подсечка (блокируй сидя) · удар в прыжке пробивает блок сидя',W/2,y+120,15,'#ddd','center',true);
   txt('Спецприём тратит синюю шкалу · Esc / Create — в меню · Options — подтвердить / реванш',W/2,y+144,15,'#ddd','center',true);
 }
-function drawSelect(){
-  ctx.fillStyle='rgba(5,5,15,.7)';ctx.fillRect(0,0,W,H);
-  txt('ВЫБОР БОЙЦА',W/2,80,54,'#ffd24a');
-  if(NET.on)txt('Игра по сети · ты — '+(NET.me?'P2 (красная рамка)':'P1 (синяя рамка)'),W/2,112,18,'#7dff8a','center',true);
-  const slot=(W-60)/CH.length;
-  for(let i=0;i<CH.length;i++){
-    const w=Math.min(170,slot-16),x=30+i*slot+(slot-w)/2,y=130,h=290,c=CH[i];
-    ctx.fillStyle='rgba(20,18,34,.9)';ctx.fillRect(x,y,w,h);
-    ctx.strokeStyle='#555';ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);
-    for(let pl=0;pl<2;pl++)if(G.sel[pl]===i){
-      const col=pl?'#ff5a4a':'#4aa8ff';
-      ctx.strokeStyle=col;ctx.lineWidth=G.ok[pl]?7:3;ctx.strokeRect(x-4-pl*5,y-4-pl*5,w+8+pl*10,h+8+pl*10);
-      txt(pl?(G.mode===1?'ИИ':'P2'):'P1',x+(pl?w-24:24),y-12,22,col);
-    }
-    drawF({x:x+w/2-8,y:y+215,facing:1,alpha:1,flash:0,ch:c,i,pose:{...clonePose(P.idle),t:.1+.03*Math.sin(frame*.08+i)}});
-    txt(c.name,x+w/2,y+250,26,'#fff');
-    txt(c.desc,x+w/2,y+274,13,'#bbb','center',true);
+// ---------- экран выбора бойца ----------
+// сетка 3×2 на картинке: номер бойца из CH в каждой рамке, -1 — боец ещё не готов (ЛамаГёрл)
+const GRID=[4,-1,0,1,2,3];
+const SELBG=new Image();SELBG.src='assets/select_bg.jpg';
+const SELP={'4':new Image(),'-1':new Image()};SELP['4'].src='assets/select_horse.png';SELP['-1'].src='assets/select_lama.png';
+const SLOT=s=>({x:277+(s%3)*139.5,y:105.5+(s/3|0)*174.4,w:127,h:158});
+const imgOk=im=>im&&im.complete&&im.naturalWidth>0;
+// шаг курсора по сетке; пустые рамки перескакиваются
+function selMove(ci,dx,dy){
+  const s=GRID.indexOf(ci);let c=s%3,r=s/3|0;
+  for(let k=0;k<3;k++){
+    c=(c+dx+3)%3;r=(r+dy+2)%2;
+    if(GRID[r*3+c]>=0)return GRID[r*3+c];
   }
-  if(G.mode===1)txt(`Сложность ИИ:  ▼  ${DIFF[G.diff][0]}  ▲`,W/2,456,22,'#ffd24a');
-  txt('Влево / вправо — боец · вверх / вниз — сложность · любая кнопка удара — подтвердить',W/2,484,16,'#ddd','center',true);
+  return ci;
+}
+const SELF=[{},{}];
+function drawSelect(){
+  if(imgOk(SELBG))ctx.drawImage(SELBG,0,0,W,H);else{ctx.fillStyle='#0a0d14';ctx.fillRect(0,0,W,H);}
+  txt('ВЫБОР БОЙЦА',W/2,60,44,'#ffd24a');
+  if(NET.on)txt('Игра по сети · ты — '+(NET.me?'P2 (красная рамка)':'P1 (синяя рамка)'),W/2,88,16,'#7dff8a','center',true);
+  else if(G.mode===1)txt(`Сложность ИИ:  ${DIFF[G.diff][0]}   (${ctlLabel('run')} — легче · ${ctlLabel('blk')} — сложнее)`,W/2,88,16,'#ffd24a','center',true);
+  for(let s=0;s<6;s++){
+    const{x,y,w,h}=SLOT(s),ci=GRID[s],im=SELP[ci];
+    if(imgOk(im))ctx.drawImage(im,x,y,w,h);
+    else if(ci>=0){ // рисованный боец в рамке
+      ctx.save();ctx.beginPath();ctx.rect(x+9,y+9,w-18,h-18);ctx.clip();
+      ctx.translate(x+w/2-4,y+h-26);ctx.scale(.62,.62);
+      drawF({x:0,y:0,facing:1,alpha:1,flash:0,ch:CH[ci],i:0,pose:{...clonePose(P.idle),t:.1+.03*Math.sin(frame*.08+s)}});
+      ctx.restore();
+      txt(CH[ci].name,x+w/2,y+h-13,12,'#ccc','center',true);
+    }
+    if(ci<0){ctx.fillStyle='rgba(8,8,12,.6)';ctx.fillRect(x+8,y+8,w-16,h-16);txt('СКОРО',x+w/2,y+h/2+7,20,'#bbb');}
+  }
+  for(let pl=0;pl<2;pl++){
+    const ai=pl===1&&G.mode===1,shown=!ai||G.ok[1],col=pl?'#ff5a4a':'#4aa8ff',c=CH[G.sel[pl]],cx=pl?820:140;
+    txt(pl?(ai?'ИИ':'ИГРОК 2'):'ИГРОК 1',cx,150,22,col);
+    if(!shown){txt('?',cx,340,120,'#444');continue;}
+    // рамка в сетке: мигает, пока боец не подтверждён
+    const{x,y,w,h}=SLOT(GRID.indexOf(G.sel[pl])),o=pl&&G.sel[0]===G.sel[1]?7:0;
+    ctx.save();ctx.shadowColor=col;ctx.shadowBlur=16;ctx.strokeStyle=col;ctx.lineWidth=G.ok[pl]?6:4;
+    ctx.globalAlpha=G.ok[pl]?1:.55+.45*Math.sin(frame*.16+pl*2);
+    ctx.strokeRect(x+2+o,y+2+o,w-4-o*2,h-4-o*2);ctx.restore();
+    txt(pl?(ai?'ИИ':'P2'):'P1',pl?x+w-20:x+20,y+26+o,18,col);
+    // выбранный боец крупно сбоку
+    const f=SELF[pl];
+    if(f.ch!==c){for(const k in f)delete f[k];f.ch=c;}
+    Object.assign(f,{x:0,y:0,facing:pl?-1:1,alpha:1,flash:0,i:pl,alt:pl===1&&G.sel[0]===G.sel[1],pose:{...clonePose(P.idle),t:.1+.03*Math.sin(frame*.08+pl)}});
+    ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.ellipse(cx,462,62,10,0,0,7);ctx.fill();
+    ctx.save();ctx.translate(cx,458);ctx.scale(1.4,1.4);drawF(f);ctx.restore();
+    txt(c.name,cx,494,26,'#fff');
+    if(G.ok[pl])txt('ГОТОВ',cx,180,18,'#7dff8a');
+  }
+  txt('Стрелки / крестовина — боец · любая кнопка удара — подтвердить · Esc / Create — в меню',W/2,528,13,'#bbb','center',true);
 }
 function render(){
   ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
