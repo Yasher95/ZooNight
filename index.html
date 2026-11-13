@@ -212,18 +212,20 @@ function drawKeys(){
   txt('↑ ↓ — выбор · ← → — раздел · Enter / ✕ — изменить · Delete — сбросить раздел · Esc / Create — назад (сохраняется само)',W/2,H-14,13,'#999','center',true);
 }
 // список приёмов с теми кнопками, на которых игрок играет
-function moveList(){
-  const l=ctlLabel,adv=[[],[],[],[]];
+function moveList(ch){
+  const l=ctlLabel,adv=[[],[],[],[]],STR=ch.str||window.STR_ALL,cs=ch.sp||{};
   const rows=Object.keys(STR).filter(k=>!Object.keys(STR).some(o=>o.startsWith(k+',')))
-    .map(k=>{const b=k.split(','),ks=b.map((_,i)=>b.slice(0,i+1).join(','));adv.push(ks.map(s=>advOf(s,M[STR[s]])));
+    .map(k=>{const b=k.split(','),ks=b.map((_,i)=>b.slice(0,i+1).join(','));adv.push(ks.map(s=>advOf(s,M[STR[s]],ch)));
       return b.map(x=>l(x)).join(' ')+'  '+ks.map(s=>LV[M[STR[s]].type]).join('')+moveTag(M[STR[k]]).replace(' — подброс',' ↑').replace(' — отскок от пола',' ↓').replace(' — в стену',' →');});
   rows.unshift('В верх · С середина · Н низ · О оверхед','блок стоя: В С О · блок сидя: В С Н','цифры — в блоке: + ты первый · − ты открыт','↑ подброс · ↓ отскок от пола · → в стену');
   const sp=(s,n)=>{rows.push(s);adv[rows.length-1]=[M[n].badv];};
   rows.push('');sp(`назад + ${l('p2')} — оверхед (О), отскок`,'smash');rows.push('удары в прыжке — оверхед (О)');
-  sp(`${l('d')} + ${l('p1')}/${l('p2')} — апперкот ↑`,'upper');sp(`${l('d')} + ${l('k1')}/${l('k2')} — подсечка`,'sweep');rows.push('');
-  sp(`${l('s')} — таран ↑`,'ram');sp(`${l('d')} + ${l('s')} — подъём ↑↑`,'rise');sp(`назад + ${l('s')} — лягание →`,'mule');
+  if(ch.cp)sp(`${l('d')} + ${l('p1')}/${l('p2')} — удар рукой сидя`,ch.cp);else sp(`${l('d')} + ${l('p1')}/${l('p2')} — апперкот ↑`,'upper');sp(`${l('d')} + ${l('k1')}/${l('k2')} — подсечка`,'sweep');rows.push('');
+  if(ch.spn){rows.push(`${l('s')} — ${ch.spn.n}`);sp(`${l('d')} + ${l('s')} — ${ch.spn.d}`,cs.d);sp(`назад + ${l('s')} — ${ch.spn.b}`,cs.b);}
+  else{sp(`${l('s')} — таран ↑`,'ram');sp(`${l('d')} + ${l('s')} — подъём ↑↑`,'rise');sp(`назад + ${l('s')} — лягание →`,'mule');}
+  if(cs.g)rows.push(`${l('g')} — захват в воздухе, об пол ×3`);
   rows.push(
-    `${l('g')} — захват в воздухе, об пол ×3`,`${l('g')} вблизи — бросок (выход — ${l('g')})`,
+    `${l('g')} вблизи — бросок (выход — ${l('g')})`,
     `${l('run')} + назад — отскок`);
   rows.adv=adv;
   return rows;
@@ -365,6 +367,39 @@ CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'
     sweep:HS('sweep',5,272,383,0,{f0:1,n:3,hit:1}),backdash:HS('backdash',5,264,383,0,{f0:1,n:3}),
     jpunch:HS('jpunch',5,292,391,0,{f0:1,n:2,hit:1}),jkick:HS('jkick',5,254,391,0,{f0:2,n:1}),
     win:HS('win',5,306,392,8,{once:1})}});
+// ЛамаГёрл: быстрая, бьёт ногами и головой; листы — tools/lama_jobs.json
+const LS=(n,frames,cw,ch,fps,o)=>sheet('assets/lama_'+n+'.png',frames,cw,ch,fps,{pal:1,...o});
+const LM_HAM=(o)=>LS('hammer',6,306,428,0,o),LM_AXE=(o)=>LS('axe',5,260,410,0,o),LM_UP=LS('upper',5,192,420,0,{hit:3});
+CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:5.6,power:.95,special:'spit',pv:11,pc:'#c8e86a',
+  sp:{n:'spit',d:'wheel',b:'dropkick'},spn:{n:'плевок — снаряд',d:'колесо ↑↑',b:'удар двумя ногами →'},cp:'cpunch',
+  str:{
+    p1:'lbf','p1,p1':'lhead','p1,p1,p2':'lhammer','p1,p1,k1':'laxe','p1,p1,k1,k2':'lround',
+    'p1,k2':'lknee','p1,k2,p2':'lupper',
+    p2:'lhead','p2,p1':'lbf','p2,p1,k1':'lspin','p2,k2':'lknee','p2,k2,k1':'laxe','p2,k2,k1,p2':'lhammer',
+    k2:'lknee','k2,k2':'laxe','k2,k2,p2':'lupper','k2,p1':'lbf','k2,p1,k1':'lround',
+    k1:'laxe','k1,k1':'lspin','k1,p2':'lhead','k1,p2,p1':'lbf'},
+  sadv:{'p1,p1':1,'p2,p1':2,'p2,k2':2,'k2,p1':-2,'k1,p2':-3,'k1,p2,p1':3,'p1,k2':-4,'k2,k2':-6},
+  ai:[['p2','p1','k1'],['p1','p1','p2'],['p1','p1','k1','k2'],['k2','k2','p2'],['p1','k2','p2'],['k2','p1','k1'],['k1','k1'],['p2','k2','k1','p2']],
+  aij:[['p1','p1','k1','k2'],['k2','k2','p2'],['p2','p1','k1'],['k2','p1','k1']],
+  desc:'Спрайт · плевок',scale:.5,sprite:{
+    idle:LS('idle',8,196,399,10),
+    walk:LS('walk',7,204,402,0,{cyc:1}),run:LS('run',8,240,402,0,{cyc:1,f0:2,n:6}),
+    jump:LS('jump',7,214,407,0,{vy:1}),
+    crouch:LS('crouch_in',6,198,383,30,{once:1}),
+    block:LS('block',6,230,397,30,{once:1,n:4}),
+    cblock:LS('cblock',7,168,280,30,{once:1,n:4}),cblock_in:LS('cblock_in',8,184,383,40,{once:1}),
+    hit_high:LS('hit_high',3,222,383,18,{once:1}),hit_mid:LS('hit_mid',3,310,383,18,{once:1}),hit_low:LS('hit_low',3,300,383,18,{once:1}),
+    chit:LS('chit',3,290,274,14,{once:1}),
+    fall:LS('juggle',3,436,383,9,{once:1}),down:LS('fall',10,466,365,14,{once:1,f0:7,n:3}),
+    lbf:LS('backfist',5,280,386,0,{hit:3}),lhead:LS('headbutt',4,288,383,0,{hit:2}),
+    lknee:LM_AXE({n:2,hit:1}),laxe:LM_AXE({hit:2}),lhammer:LM_HAM({hit:3}),smash:LM_HAM({hit:3}),
+    lupper:LM_UP,upper:LM_UP,lround:LS('round',6,304,401,0,{hit:3}),lspin:LS('spin',6,404,407,0,{hit:3}),
+    cpunch:LS('cpunch',8,312,291,0,{hit:4}),sweep:LS('sweep',7,582,283,0,{f0:4,n:3,hit:1}),
+    jpunch:LS('jpunch',6,490,417,0,{f0:2,n:2,hit:1}),jkick:LS('jkick',6,394,420,0,{f0:3,n:1}),
+    spit:LS('spit',6,196,384,0),wheel:LS('wheel',6,356,418,0,{hit:3}),dropkick:LS('dropkick',6,364,414,0,{hit:3}),
+    // своих кадров броска нет: замах и швырок взяты из удара двумя руками
+    throw:LM_HAM({n:2,hit:1}),throwHold:LM_HAM({f0:2,n:1}),throwEnd:LM_HAM({f0:3,n:3}),
+    backdash:LS('backdash',6,242,395,0,{f0:1,n:4}),win:LS('win',5,220,401,8,{once:1})}});
 // второй цвет для боя одинаковых бойцов: синие джинсы -> чёрные, красные кеды -> синие (атлас перекрашивается один раз)
 function altImg(an){
   if(an.alt!==undefined)return an.alt;
@@ -376,7 +411,8 @@ function altImg(an){
     for(let i=0;i<p.length;i+=4){
       if(!p[i+3])continue;
       const r=p[i],g=p[i+1],b=p[i+2];
-      if(b>r*1.15&&b>g*1.05){const l=(r+g+b)/3*.5;p[i]=l;p[i+1]=l;p[i+2]=l*1.12;}
+      if(an.pal){if(r>150&&r>g*1.5&&b>g*1.15&&r>b*1.15){p[i]=g*.5;p[i+1]=b*1.1;p[i+2]=r;}} // лама: розовая юбка -> голубая
+      else if(b>r*1.15&&b>g*1.05){const l=(r+g+b)/3*.5;p[i]=l;p[i+1]=l;p[i+2]=l*1.12;}
       else if(r>2.1*g&&r>2.1*b&&r>80){p[i]=b*.8;p[i+1]=g+r*.3;p[i+2]=r;}
     }
     x.putImageData(d,0,0);an.alt=c;
@@ -424,11 +460,25 @@ const M={
   smash:   {su:18,ac:4,rc:14,dmg:7,reach:84,y0:60,y1:175,kb:2,stun:22,type:'over',pose:'hammer',adv:8,gb:true,heavy:true,badv:-8},
   grabEnd: {su:0,ac:0,rc:8, pose:'hammer',special:true},
   grabFail:{su:0,ac:0,rc:24,pose:'hammer',special:true},
-  throwEnd:{su:0,ac:0,rc:24,pose:'hammer',special:true}
+  throwEnd:{su:0,ac:0,rc:24,pose:'hammer',special:true},
+  // ЛамаГёрл: свои удары серий, удар рукой сидя и спецприёмы (плевок — снаряд, колесо, удар двумя ногами)
+  lbf:    {su:4,ac:3,rc:8, dmg:3,reach:84, y0:120,y1:158,kb:3,  stun:15,type:'high',pose:'cross', adv:3},
+  lhead:  {su:4,ac:3,rc:9, dmg:5,reach:66, y0:104,y1:150,kb:3,  stun:17,type:'mid', pose:'hook',  adv:8},
+  lknee:  {su:5,ac:4,rc:10,dmg:5,reach:68, y0:60, y1:120,kb:3,  stun:17,type:'mid', pose:'knee',  adv:6},
+  laxe:   {su:7,ac:4,rc:13,dmg:7,reach:86, y0:110,y1:196,kb:4.5,stun:19,type:'high',pose:'hkick', adv:4},
+  lhammer:{su:9,ac:4,rc:14,dmg:8,reach:78, y0:50, y1:180,kb:2,  stun:22,type:'over',pose:'hammer',adv:5,gb:true,heavy:true},
+  lupper: {su:6,ac:5,rc:12,dmg:8,reach:72, y0:70, y1:210,kb:1.5,stun:20,type:'mid', pose:'upper', adv:5,launch:15,heavy:true},
+  lround: {su:9,ac:5,rc:16,dmg:9,reach:98, y0:100,y1:175,kb:14, stun:22,type:'mid', pose:'hkick', adv:6,launch:6,wall:true,heavy:true},
+  lspin:  {su:8,ac:5,rc:15,dmg:8,reach:94, y0:90, y1:180,kb:2,  stun:21,type:'high',pose:'hkick', adv:7,launch:13,heavy:true},
+  cpunch: {su:4,ac:3,rc:8, dmg:3,reach:82, y0:50, y1:100,kb:3,  stun:15,type:'mid', pose:'punch', crouch:true},
+  spit:   {su:14,ac:1,rc:22,pose:'cast',special:true,proj:150},
+  wheel:  {su:8,ac:8, rc:15,dmg:8,reach:78,y0:30,y1:230,kb:1, akb:1,stun:22,launch:17,type:'mid',pose:'upper',special:true,rush:7, heavy:true},
+  dropkick:{su:7,ac:10,rc:16,dmg:9,reach:92,y0:70,y1:165,kb:15,      stun:24,launch:6, type:'mid',pose:'kick', special:true,rush:10,wall:true,heavy:true}
 };
 // преимущество в блоке (кадры): до -2 безопасно, от -5 и ниже наказывается
 const BADV={jab:1,cross:-2,hook:-3,backfist:-4,elbow:-3,upper2:-13,hammer:-7,kick:-2,sidekick:-6,lowkick:-4,knee:-3,
-  riseknee:-13,hkick:-5,round:-11,upper:-13,sweep:-13,dash:-14,ram:-15,rise:-20,mule:-12};
+  riseknee:-13,hkick:-5,round:-11,upper:-13,sweep:-13,dash:-14,ram:-15,rise:-20,mule:-12,
+  lbf:1,lhead:-2,lknee:-3,laxe:-5,lhammer:-7,lupper:-13,lround:-11,lspin:-12,cpunch:-1,wheel:-20,dropkick:-13};
 for(const k in BADV)M[k].badv=BADV[k];
 // у серий своё преимущество: плюсовые серии продолжают давление, минусовые оставляют открытым
 const SADV={'p1,p1,p2':2,'p2,p1':1,'p2,k2':3,'k2,k2':-4,'k2,k2,p1':2,'k1,p2':-2,'k1,p2,p1':4,'k2,p1':-3};
@@ -436,11 +486,11 @@ const advCol=a=>a>0?'#7dff8a':a<=-5?'#ff7a6a':'#cfcfcf';
 const advTxt=a=>(a>0?'+':a<0?'−':'')+Math.abs(a);
 // удары достают дальше и сильнее продвигают вперёд — начать атаку можно не вплотную
 for(const k in M){const m=M[k];if(m.dmg&&!m.air&&!m.special){m.reach=Math.round(m.reach*1.16);m.adv=(m.adv||0)+3;}}
-for(const k of['ram','rise','mule','dash'])M[k].chip=1.5; // спецприёмы немного пробивают блок
+for(const k of['ram','rise','mule','dash','wheel','dropkick'])M[k].chip=1.5; // спецприёмы немного пробивают блок
 // удары об пол: sw — длительность замаха, q — сколько кнопок нажать для следующего удара, qt — время на это (кадры)
 const GR={R:26,sw:[20,17,15],dmg:[6,7,9],qt:[0,50,70],seq:[null,['p2','p1','k1'],['k2','k2','p1','p2','k1']]};
 // серии: последовательность кнопок -> удар. Следующий удар отменяет восстановление предыдущего.
-const STR={
+const STR=window.STR_ALL={
   p1:'jab','p1,p1':'cross','p1,p1,p2':'hook','p1,p1,p2,k1':'riseknee',
   'p1,p1,k2':'sidekick','p1,p1,k2,k1':'round',
   'p1,k2':'lowkick','p1,k2,p2':'hammer',
@@ -450,6 +500,7 @@ const STR={
   'k2,p1':'backfist','k2,p1,p2':'hammer',
   k1:'hkick','k1,k1':'round','k1,p2':'hook','k1,p2,p1':'backfist'
 };
+const strOf=f=>f.ch.str||STR; // у бойца могут быть свои серии
 const BTN=['p1','p2','k1','k2'],SP_COST=25;
 const SYM={p1:'△',p2:'□',k1:'○',k2:'✕',s:'R2'};
 const moveTag=m=>m.launch>=10?' — подброс':m.gb?' — отскок от пола':m.wall?' — в стену':'';
@@ -539,7 +590,7 @@ function recov(f){
   return r;
 }
 // преимущество в блоке: у серии своё (SADV), иначе — у удара (badv). Плюс — атакующий ходит первым, минус — открыт
-const advOf=(seq,m)=>seq&&SADV[seq]!==undefined?SADV[seq]:m.badv!==undefined?m.badv:-3;
+const advOf=(seq,m,ch)=>{const t=(ch&&ch.sadv)||SADV;return seq&&t[seq]!==undefined?t[seq]:m.badv!==undefined?m.badv:-3;};
 function breakString(f){if(!f.locked){f.locked=true;f.breakT=45;}}
 // приём нажатий. Во время удара лишняя, неверная или запоздалая кнопка срывает серию.
 function feed(f,inp){
@@ -552,7 +603,7 @@ function feed(f,inp){
       if(!m.special){
         const pending=BK.some(k=>f.buf[k]>0);
         const closed=f.at>(f.contactAt>=0?f.contactAt:m.su+m.ac)+CANCEL_WIN; // мимо — окно открывается после активных кадров
-        const ok=b==='s'||!!STR[f.seq+','+b];
+        const ok=b==='s'||!!strOf(f)[f.seq+','+b];
         if(pending||closed||!ok)breakString(f);
       }
     }
@@ -573,7 +624,7 @@ function trySpecial(f,o,inp){
     f.facing=o.x>=f.x?1:-1;f.crouching=false;startMove(f,'throw','');return true;
   }
   const face=o.x>=f.x?1:-1,name=sp[f.sDir||'n']||sp.n; // направление запоминается в момент нажатия
-  if(o.state==='hit'&&f.usedSp.includes(name))return false; // каждый спецприём — раз за комбо
+  if(o.state==='hit'&&f.usedSp.includes(M[name].proj?'proj':name))return false; // каждый спецприём — раз за комбо
   f.facing=face;f.energy-=SP_COST;f.crouching=false;
   startMove(f,name,'');
   return true;
@@ -728,7 +779,7 @@ function resolveHit(a,d,m,dir,isProj,ender){
   if(!isProj)a.res=1;
   if(canBlock){
     // преимущество в блоке у каждого удара и серии своё: одни дают плюс, после других боец открыт
-    const adv=advOf(isProj?'':a.seq,m);
+    const adv=advOf(isProj?'':a.seq,m,a.ch);
     d.state='bstun';d.stateT=Math.max(3,rem+adv);d.vx=dir*5;
     if(G.mode===3&&!isProj){a.msg=(adv>0?'+':adv<0?'−':'')+Math.abs(adv)+' в блоке';a.msgC=advCol(adv);a.msgT=frame+50;}
     d.hp=Math.max(1,d.hp-(m.chip||0));
@@ -792,7 +843,7 @@ function updF(f,o,inp){
       else if(inp.blk){f.state='block';f.crouching=!!inp.d;f.vx=0;}
       else if(inp.d){
         f.state='crouch';f.crouching=true;f.vx=0;
-        if(anyP)startMove(f,'upper');else if(anyK)startMove(f,'sweep');
+        if(anyP)startMove(f,f.ch.cp||'upper');else if(anyK)startMove(f,'sweep');
       }else{
         f.crouching=false;
         const dir=(inp.r?1:0)-(inp.l?1:0);
@@ -802,7 +853,7 @@ function updF(f,o,inp){
         if(dir)f.walkT+=(f.running?.36:.22)*dir*f.facing;
         const b=BTN.find(b=>f.buf[b]>0);
         if(b==='p2'&&dir===-f.facing)startMove(f,'smash','');
-        else if(b)startMove(f,STR[b],b);
+        else if(b)startMove(f,strOf(f)[b],b);
         else if(inp.run&&dir===-f.facing&&!f.bdCd){ // отскок назад: уходит от броска, но 16 кадров открыт для удара
           startMove(f,'backdash','');f.vx=-f.facing*11;f.bdCd=34;f.tInv=12;
         }else if(inp.u){f.vy=-15.5;f.vx=dir*f.ch.speed*(f.running?1.6:1.15);f.state='jump';f.y-=1;snd('jump');}
@@ -820,7 +871,7 @@ function updF(f,o,inp){
     if(!m.air&&!m.special&&!f.locked&&f.at>=c0&&f.at<=c0+CANCEL_WIN){
       if(f.buf.s>0){if(!hitC||!trySpecial(f,o,inp)){f.buf.s=0;breakString(f);}}
       else{
-        const b=BTN.find(b=>f.buf[b]>0),nx=b&&STR[f.seq+','+b];
+        const b=BTN.find(b=>f.buf[b]>0),nx=b&&strOf(f)[f.seq+','+b];
         if(nx){f.facing=o.x>=f.x?1:-1;startMove(f,nx,f.seq+','+b);}
       }
       m=f.move;
@@ -833,8 +884,8 @@ function updF(f,o,inp){
       else f.vx*=m.fr||.72;
       if(f.mname==='blink')f.alpha=f.at<m.su?1-f.at/m.su:Math.min(1,(f.at-m.su)/m.rc);
       if(f.at===m.su){
-        if(f.mname==='proj'){
-          projs.push({x:f.x+f.facing*50,y:f.y-112,vx:f.facing*f.ch.pv,owner:f,col:f.ch.pc});snd('proj');
+        if(f.mname==='proj'||m.proj){
+          projs.push({x:f.x+f.facing*50,y:f.y-(m.proj||112),vx:f.facing*f.ch.pv,owner:f,col:f.ch.pc});snd('proj');
         }else if(f.mname==='blink'){
           burst(f.x,f.y-90,f.ch.accent,14,5);
           const side=o.x>=f.x?1:-1;
@@ -851,7 +902,7 @@ function updF(f,o,inp){
     if(f.state==='attack'&&(m.dmg||(m.grab&&o.y<GY)||(m.throw&&throwable(o)))&&!f.hitDone&&G.phase==='fight'&&f.at>=m.su&&f.at<m.su+m.ac&&vuln(o)&&overlap(hitbox(f,o.state==='hit'&&o.y<GY&&!m.air?70:0),hurtbox(o))){
       // попадание откладывается: оба бойца сначала делают ход, потом удары применяются одновременно (честный размен)
       f.hitDone=true;f.contactAt=f.at;
-      PEND.push({a:f,d:o,m,ender:!!f.seq&&!BTN.some(b=>STR[f.seq+','+b])});
+      PEND.push({a:f,d:o,m,ender:!!f.seq&&!BTN.some(b=>strOf(f)[f.seq+','+b])});
     }
   }else if(f.state==='hit'){
     f.stateT--;
@@ -947,10 +998,10 @@ function aiInput(f,o){
       ai.done=true;
       const hit=o.state==='hit',n=f.seq?f.seq.split(',').length:0,next=ai.plan&&ai.plan[n];
       const exec=R()<.6+.39*sk; // ошибка исполнения
-      const sps=[['ram',{}],['rise',{d:1}],['mule',{[bk]:1}]].filter(s=>!f.usedSp.includes(s[0]));
+      const cs=f.ch.sp||{n:'ram',d:'rise',b:'mule'},sps=[[cs.n,{}],[cs.d,{d:1}],[cs.b,{[bk]:1}]].filter(s=>!f.usedSp.includes(M[s[0]].proj?'proj':s[0]));
       if(hit&&exec){
         if(f.energy>=SP_COST&&(!next||R()<.15)&&R()<.3+.6*sk){
-          if(o.y<GY-30&&!f.usedSp.includes('grab')&&R()<.4){inp.s=1;inp.g=1;}
+          if(o.y<GY-30&&cs.g&&!f.usedSp.includes('grab')&&R()<.4){inp.s=1;inp.g=1;}
           else if(sps.length){inp.s=1;Object.assign(inp,pick(sps)[1]);}
           else if(next)inp[next]=1;
         }else if(next)inp[next]=1;
@@ -986,14 +1037,14 @@ function aiInput(f,o){
   // джаггл: добежать и начать серию
   if(o.state==='hit'&&o.y<GY){
     if(dist>100){inp[fw]=1;inp.run=1;return inp;}
-    if(GY-o.y<215&&R()<.5+.5*sk){ai.plan=pick(AI_JUG);inp[ai.plan[0]]=1;}
+    if(GY-o.y<215&&R()<.5+.5*sk){ai.plan=pick(f.ch.aij||AI_JUG);inp[ai.plan[0]]=1;}
     return inp;
   }
   // наказание промаха или небезопасного удара
   if(om&&o.at>=om.su+om.ac&&!om.air){
     const left=om.su+om.ac+om.rc-o.at;
     if(left>=5&&R()<.3+.7*sk){
-      if(dist<100){ai.plan=AI_STR[0];inp[ai.plan[0]]=1;return inp;}
+      if(dist<100){ai.plan=(f.ch.ai||AI_STR)[0];inp[ai.plan[0]]=1;return inp;}
       if(left>12){inp[fw]=1;inp.run=1;return inp;}
     }
   }
@@ -1018,7 +1069,7 @@ function aiInput(f,o){
   const oBlk=o.state==='block'||o.state==='bstun';
   if(oBlk&&o.crouching&&R()<.12+.2*sk){inp[bk]=1;inp.p2=1;ai.plan=null;ai.t=2;return inp;} // оверхед по сидящему в блоке
   if(r<(oBlk?.35:.1)){inp.s=1;inp.g=1;ai.t=4;return inp;} // бросок, особенно против блока
-  if(r<.78){ai.plan=pick(AI_STR);inp[ai.plan[0]]=1;ai.t=2;return inp;}
+  if(r<.78){ai.plan=pick(f.ch.ai||AI_STR);inp[ai.plan[0]]=1;ai.t=2;return inp;}
   if(r<.88){ai.hold={blk:1};ai.t=8+(R()*10|0);}
   else{ai.hold={[bk]:1,run:R()<.5?1:0};ai.t=8+(R()*8|0);} // отход или отскок
   return Object.assign(inp,ai.hold);
@@ -1101,7 +1152,7 @@ function tick(net){
       if(b&&!G.dPrev){G.diff=(G.diff+b+DIFF.length)%DIFF.length;samp('ui_sel',.6,1.2,0);}
       G.dPrev=b;
     }
-    if(G.mode===1&&G.ok[0]&&!G.ok[1]){G.sel[1]=GRID[0];G.ok[1]=true;samp('ui_sel',.8,1,0);}
+    if(G.mode===1&&G.ok[0]&&!G.ok[1]){G.sel[1]=GRID[Math.random()*2|0];G.ok[1]=true;samp('ui_sel',.8,1,0);}
     if(G.ok[0]&&G.ok[1]&&++G.selT>40)startMatch();
     return;
   }
@@ -1609,7 +1660,7 @@ function drawTraining(){
   txt('Backspace / Options — сброс · Tab / тачпад — список · V — прослушать голос · M — музыка · Esc / Create — меню',W-20,H-10,12,'#999','right',true);
   if(G.vtT>frame)txt(G.vtMsg,W/2,112,16,'#9fd8ff','center',true);
   if(G.list){
-    const ML=moveList();
+    const ML=moveList(F[0].ch);
     ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(W-322,96,312,ML.length*16+12);
     ML.forEach((s,i)=>{
       if(!s)return;
@@ -1641,9 +1692,9 @@ function drawMenu(){
 }
 // ---------- экран выбора бойца ----------
 // сетка 3×2 на картинке: номер бойца из CH в каждой рамке, -1 — боец ещё не готов (ЛамаГёрл)
-const GRID=[4,-1,-2,-2,-2,-2]; // -2 — пустая рамка
+const GRID=[4,5,-2,-2,-2,-2]; // -2 — пустая рамка
 const SELBG=new Image();SELBG.src='assets/select_bg.jpg';
-const SELP={'4':new Image(),'-1':new Image()};SELP['4'].src='assets/select_horse.png';SELP['-1'].src='assets/select_lama.png';
+const SELP={'4':new Image(),'5':new Image()};SELP['4'].src='assets/select_horse.png';SELP['5'].src='assets/select_lama.png';
 const SLOT=s=>({x:277+(s%3)*139.5,y:105.5+(s/3|0)*174.4,w:127,h:158});
 const imgOk=im=>im&&im.complete&&im.naturalWidth>0;
 // шаг курсора по сетке; пустые рамки перескакиваются
