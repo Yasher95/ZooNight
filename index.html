@@ -13,11 +13,11 @@ canvas{width:min(100vw,177.78vh);height:auto;display:block}
 <canvas id="c" width="960" height="540"></canvas>
 <script>
 'use strict';
-const W=960,H=540,GY=470;
+const W=960,H=540,GY=500; // GY — линия пола: середина зоны, размеченной на арене («игровая зона.png»)
 // WW — ширина арены (мир шире экрана); camX — левый край экрана в мире. Бойцы не расходятся дальше экрана.
 const WW=1634,SPAN=W-90;
 // AL..AR — где можно стоять: левее и правее пол уходит под стену, столы и бочки (картинка шире игровой зоны)
-const AL=270,AR=1440;
+const AL=236,AR=1398; // края зоны для ходьбы (183…1450 на арене) с запасом на ширину бойца
 let camX=(WW-W)/2;
 const camTarget=()=>clamp((F[0].x+F[1].x)/2-W/2,0,WW-W);
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -241,14 +241,15 @@ function audioInit(){
 // музыка локации: зациклена, M — выключить / включить
 const MUSIC=new Audio('assets/audio/music_bar.mp3');MUSIC.loop=true;MUSIC.volume=.28;
 const MUSIC_SEL=new Audio('assets/audio/music_select.mp3');MUSIC_SEL.loop=true;MUSIC_SEL.volume=.32;
+const MUSIC_MENU=new Audio('assets/audio/music_menu.mp3');MUSIC_MENU.loop=true;MUSIC_MENU.volume=.32;
 let musicOff=false;
-// на экране выбора бойца играет своя музыка, в остальное время — музыка локации
+// в меню, на экране выбора бойца и в бою — своя музыка
 function musicSync(){
   if(!ac)return;
-  const sel=G.phase==='select',on=sel?MUSIC_SEL:MUSIC,off=sel?MUSIC:MUSIC_SEL;
-  if(!off.paused)off.pause();
+  const on=G.phase==='select'?MUSIC_SEL:G.phase==='menu'||G.phase==='net'||G.phase==='keys'?MUSIC_MENU:MUSIC;
+  for(const m of[MUSIC,MUSIC_SEL,MUSIC_MENU])if(m!==on&&!m.paused)m.pause();
   if(musicOff){if(!on.paused)on.pause();}
-  else if(on.paused){if(sel)on.currentTime=0;on.play().catch(()=>{});}
+  else if(on.paused){if(on!==MUSIC)on.currentTime=0;on.play().catch(()=>{});}
 }
 // сэмплы: в каждом файле несколько звуков подряд — играется кусок [файл, начало, конец] в секундах.
 // v_* — голос HorseMan: atk — удар, sp — спецприём, hurt — получил удар, ko — нокаут, win — победа
@@ -1383,6 +1384,7 @@ const bg=document.createElement('canvas');bg.width=W;bg.height=H;
 
 // арена-бар: картинка шире экрана, рисуется в координатах мира. Пока не загрузилась — старый фон крыши.
 const ARENA=new Image();ARENA.src='assets/arena_bar.jpg';
+const ARENA_FG=new Image();ARENA_FG.src='assets/arena_bar_fg.png'; // ящик и бочка справа — рисуются поверх бойцов
 // источники света (координаты по картинке шириной 2000): лампы, неон, автомат, окно. b — как часто мигает
 const LIGHTS=[
   {x:597, y:285,r:190,c:'255,214,140',a:.34,b:.004,cone:1},
@@ -1420,6 +1422,17 @@ function drawArena(){
 
 // ---------- отрисовка ----------
 const TH=44,SH=44,TO=60,UA=30,FA=30,OUT='#0b0b12';
+// тень спрайтового бойца: тот же кадр, отражённый вниз от линии пола, чёрный и полупрозрачный
+const SHD=[null,null];
+function drawShadow(i){
+  const s=SHD[i],f=F[i];
+  if(!s||s.f!==f)return false;
+  const up=clamp((GY-f.y)/260,0,1); // в прыжке тень остаётся на полу и бледнеет
+  ctx.save();ctx.globalAlpha=.5*f.alpha*(1-.5*up);ctx.filter='brightness(0)';
+  ctx.translate(f.x,GY+1);ctx.transform(f.facing,0,-.3,-.2,0,0);
+  ctx.drawImage(s.img,s.sx,0,s.cw,s.ch,s.dx,s.dy,s.w,s.h);
+  ctx.restore();return true;
+}
 function drawSprite(f){
   const c=f.ch,p=f.pose,sp=c.sprite,st=f.state;
   const blk=st==='block'||st==='bstun';
@@ -1460,6 +1473,7 @@ function drawSprite(f){
   const s=c.scale,w=an.cw*s,h=an.ch*s*f.sq;
   let lunge=0;
   if(!own&&st==='attack'&&f.move.dmg&&f.at>=f.move.su&&f.at<f.move.su+f.move.ac+3)lunge=12;
+  SHD[f.i]=f.noShadow||st==='grabbed'?null:{f,img,sx:fr*an.cw,cw:an.cw,ch:an.ch,w,h,dx:-w/2+lunge,dy:-h+3*s};
   ctx.save();ctx.globalAlpha=f.alpha;
   if(own){ctx.translate(f.x+(st==='bstun'?(frame&2?1.5:-1.5):0),f.y);ctx.scale(f.facing,1);}
   else if(st==='grabbed'&&f.grabRot!==undefined){ctx.translate(f.x,f.y);ctx.scale(f.facing,1);ctx.rotate(-f.grabRot);}
@@ -1657,7 +1671,7 @@ function drawSelect(){
     // выбранный боец крупно сбоку
     const f=SELF[pl];
     if(f.ch!==c){for(const k in f)delete f[k];f.ch=c;}
-    Object.assign(f,{x:0,y:0,facing:pl?-1:1,alpha:1,flash:0,i:pl,alt:pl===1&&G.sel[0]===G.sel[1],pose:{...clonePose(P.idle),t:.1+.03*Math.sin(frame*.08+pl)}});
+    Object.assign(f,{noShadow:true,x:0,y:0,facing:pl?-1:1,alpha:1,flash:0,i:pl,alt:pl===1&&G.sel[0]===G.sel[1],pose:{...clonePose(P.idle),t:.1+.03*Math.sin(frame*.08+pl)}});
     ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.ellipse(cx,462,62,10,0,0,7);ctx.fill();
     ctx.save();ctx.translate(cx,458);ctx.scale(1.4,1.4);drawF(f);ctx.restore();
     txt(c.name,cx,494,26,'#fff');
@@ -1674,6 +1688,7 @@ function render(){
   drawArena();
   if(menu){ctx.restore();if(G.phase==='menu')drawMenu();else if(G.phase==='net')drawNet();else if(G.phase==='keys')drawKeys();else drawSelect();ctx.restore();return;}
   for(const f of F){
+    if(drawShadow(f.i))continue;
     ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();
     ctx.ellipse(f.x,GY+3,Math.max(14,40-(GY-f.y)*.12),7,0,0,7);ctx.fill();
   }
@@ -1686,6 +1701,7 @@ function render(){
   }
   for(const p of parts){ctx.globalAlpha=clamp(p.life/14,0,1);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);}
   ctx.globalAlpha=1;
+  if(ARENA_FG.complete&&ARENA_FG.naturalWidth)ctx.drawImage(ARENA_FG,3041*WW/3584,919*H/1184,338*WW/3584,265*H/1184); // передний план перекрывает бойцов
   ctx.restore();
   hud();
   if(NET.on)drawNetHud();
