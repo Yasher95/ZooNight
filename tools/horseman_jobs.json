@@ -323,6 +323,16 @@
                      "erode":  3,
                      "shed":  true,
                      "valley":  true
+                 },
+                 {
+                     "dewhite":  4,
+                     "stand":  "f0",
+                     "erode":  1,
+                     "name":  "horseman_daze",
+                     "valley":  true,
+                     "frames":  8,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\ошеломление.png"
                  }
              ]
 }

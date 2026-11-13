@@ -356,7 +356,7 @@ CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'
     crouch:HS('crouch_in',8,214,384,30,{once:1,n:5}),
     block:HS('block',6,182,385,30,{once:1,n:4}),
     cblock:HS('cblock',7,168,270,30,{once:1,n:4}),cblock_in:HS('cblock_in',8,192,384,40,{once:1}),
-    hit_high:HS('hit_high',3,270,384,18,{once:1}),hit_mid:HS('hit_mid',3,214,383,18,{once:1}),hit_low:HS('hit_low',3,312,383,18,{once:1}),
+    daze:HS('daze',8,164,407,9),hit_high:HS('hit_high',3,270,384,18,{once:1}),hit_mid:HS('hit_mid',3,214,383,18,{once:1}),hit_low:HS('hit_low',3,312,383,18,{once:1}),
     chit:HS('chit',3,220,270,14,{once:1}),
     fall:HS('juggle',3,336,350,9,{once:1}),down:HS('fall',11,278,384,14,{once:1,f0:6,n:5}),
     jab:HM_JAB,punch:HM_JAB,cross:HS('cross',4,376,386,0,{hit:2}),hook:HS('hook',3,230,383,0,{hit:2}),
@@ -375,9 +375,10 @@ CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'
     win:HS('win',5,306,392,8,{once:1})}});
 // ЛамаГёрл: быстрая, бьёт ногами и головой; листы — tools/lama_jobs.json
 const LS=(n,frames,cw,ch,fps,o)=>sheet('assets/lama_'+n+'.png',frames,cw,ch,fps,{pal:1,...o});
+const SPITBALL=sheet('assets/lama_spitball.png',8,174,119,0,{});
 const LM_HAM=(o)=>LS('hammer',6,306,428,0,o),LM_AXE=(o)=>LS('axe',5,260,410,0,o),LM_UP=LS('upper',5,192,420,0,{hit:3});
 CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:5.6,power:1,special:'spit',pv:11,pc:'#c8e86a',voice:true,vp:'l_',
-  sp:{n:'spit',d:'wheel',b:'dropkick',g:'grab'},rave:true,cap:12,pm:{dmg:7,kb:4,akb:1,stun:18,type:'mid',chip:1,y0:95,y1:125,special:true,pop:11}, // плевок: в воздухе подкидывает, раз за комбо
+  sp:{n:'spit',d:'wheel',b:'dropkick',g:'grab'},rave:true,cap:12,psheet:SPITBALL,pm:{dmg:7,kb:4,akb:1,stun:18,type:'mid',chip:1,y0:95,y1:125,special:true,pop:11}, // плевок: в воздухе подкидывает, раз за комбо
   spn:{n:'плевок — снаряд',d:'колесо ↑↑',b:'удар двумя ногами →'},cp:'cpunch',
   // серии длинные (до 5 ударов): лёгкие удары держат противника в воздухе, концовки подбрасывают, бьют об пол или в стену
   str:{
@@ -400,7 +401,7 @@ CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',
     crouch:LS('crouch_in',6,198,383,30,{once:1}),
     block:LS('block',6,230,397,30,{once:1,n:4}),
     cblock:LS('cblock',7,168,280,30,{once:1,n:4}),cblock_in:LS('cblock_in',8,184,383,40,{once:1}),
-    hit_high:LS('hit_high',3,222,383,18,{once:1}),hit_mid:LS('hit_mid',3,310,383,18,{once:1}),hit_low:LS('hit_low',3,300,383,18,{once:1}),
+    daze:LS('daze',6,194,385,8),hit_high:LS('hit_high',3,222,383,18,{once:1}),hit_mid:LS('hit_mid',3,310,383,18,{once:1}),hit_low:LS('hit_low',3,300,383,18,{once:1}),
     chit:LS('chit',3,290,274,14,{once:1}),
     fall:LS('juggle',3,436,383,9,{once:1}),down:LS('fall',10,466,365,14,{once:1,f0:7,n:3}),
     lbf:LS('backfist',5,280,386,0,{hit:3}),lhead:LS('headbutt',4,288,383,0,{hit:2}),ldaze:LS('headbutt',4,288,383,0,{hit:2}),
@@ -561,7 +562,7 @@ function lerpPose(p,t,k){
 
 // ---------- состояние игры ----------
 const G={diff:1,phase:'menu',mode:1,t:0,round:1,timer:3600,sel:[4,4],ok:[false,false],selT:0,winner:null,timeout:false};
-let F=[],projs=[],parts=[],hitstop=0,shake=0,frame=0;
+let SPFX=[],F=[],projs=[],parts=[],hitstop=0,shake=0,frame=0;
 const EMPTY={};
 const FREE=['idle','walk','crouch','jump','block'];
 
@@ -983,7 +984,7 @@ function updF(f,o,inp){
       if(f.mname==='blink')f.alpha=f.at<m.su?1-f.at/m.su:Math.min(1,(f.at-m.su)/m.rc);
       if(f.at===m.su){
         if(f.mname==='proj'||m.proj){
-          projs.push({x:f.x+f.facing*50,y:f.y-(m.proj||112),vx:f.facing*f.ch.pv,owner:f,col:f.ch.pc});if(!m.proj||!samp('l_spit',.7))snd('proj');
+          projs.push({x:f.x+f.facing*50,y:f.y-(m.proj||112),vx:f.facing*f.ch.pv,owner:f,col:f.ch.pc,spr:f.ch.psheet,t0:frame});if(!m.proj||!samp('l_spit',.7))snd('proj');
         }else if(f.mname==='blink'){
           burst(f.x,f.y-90,f.ch.accent,14,5);
           const side=o.x>=f.x?1:-1;
@@ -1197,10 +1198,11 @@ function world(live){
     }
     for(const p of projs){
       p.x+=p.vx;
-      if(frame%2===0)parts.push({x:p.x,y:p.y,vx:-p.vx*.2,vy:(Math.random()-.5)*2,life:12,col:p.col,size:4});
+      if(frame%2===0&&!p.spr)parts.push({x:p.x,y:p.y,vx:-p.vx*.2,vy:(Math.random()-.5)*2,life:12,col:p.col,size:4});
       const o=F[1-p.owner.i],hb=hurtbox(o);
       if(G.phase==='fight'&&vuln(o)&&p.x>hb.x-12&&p.x<hb.x+hb.w+12&&p.y>hb.y&&p.y<hb.y+hb.h){
         p.dead=true;resolveHit(p.owner,o,p.owner.ch.pm||PM,Math.sign(p.vx),true);
+        if(p.spr)SPFX.push({x:p.x,y:p.y,dir:Math.sign(p.vx),spr:p.spr,t0:frame}); // брызги — только картинка
       }
       if(p.x<camX-30||p.x>camX+W+30)p.dead=true;
     }
@@ -1752,7 +1754,7 @@ function drawSprite(f){
   if(!own&&st==='attack'&&f.move.dmg&&f.at>=f.move.su&&f.at<f.move.su+f.move.ac+3)lunge=12;
   SHD[f.i]=f.noShadow||st==='grabbed'?null:{f,img,sx:fr*an.cw,cw:an.cw,ch:an.ch,w,h,dx:-w/2+lunge,dy:-h+3*s};
   ctx.save();ctx.globalAlpha=f.alpha;
-  if(own){ctx.translate(f.x+(st==='bstun'?(frame&2?1.5:-1.5):0),f.y);ctx.scale(f.facing,1);if(key==='daze')ctx.rotate(Math.sin(frame*.13)*.07);}
+  if(own){ctx.translate(f.x+(st==='bstun'?(frame&2?1.5:-1.5):0),f.y);ctx.scale(f.facing,1);if(key==='daze'&&!sp.daze)ctx.rotate(Math.sin(frame*.13)*.07);} // своего листа нет — покачивание стойки
   else if(st==='grabbed'&&f.grabRot!==undefined){ctx.translate(f.x,f.y);ctx.scale(f.facing,1);ctx.rotate(-f.grabRot);}
   else{ctx.translate(f.x,f.y-p.rot*16);ctx.scale(f.facing,1);ctx.rotate(-p.rot+(p.t-.1)*.32);}
   if(f.flash>0)ctx.filter='brightness(4)';
@@ -1981,7 +1983,18 @@ function render(){
   }
   const order=F[0].state==='attack'?[F[1],F[0]]:[F[0],F[1]];
   for(const f of order)drawF(f);
+  SPFX=SPFX.filter(e=>frame-e.t0<16&&imgOk(e.spr.img));
+  for(const e of SPFX){ // брызги плевка
+    const s=e.spr,fr=frame-e.t0<8?4:7,sc=.62;
+    ctx.save();ctx.globalAlpha=frame-e.t0<10?1:(16-(frame-e.t0))/6;ctx.translate(e.x,e.y);ctx.scale(e.dir*sc,sc);
+    ctx.drawImage(s.img,fr*s.cw,0,s.cw,s.ch,-s.cw/2,-s.ch/2,s.cw,s.ch);ctx.restore();
+  }
   for(const p of projs){
+    if(p.spr&&imgOk(p.spr.img)){ // плевок: вылет, потом полёт кадрами 1-3
+      const s=p.spr,k=frame-p.t0,fr=k<5?0:1+((k-5)/5|0)%3,sc=.58;
+      ctx.save();ctx.translate(p.x,p.y);ctx.scale(Math.sign(p.vx)*sc,sc);
+      ctx.drawImage(s.img,fr*s.cw,0,s.cw,s.ch,-s.cw*.62,-s.ch/2,s.cw,s.ch);ctx.restore();continue;
+    }
     const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,22);
     g.addColorStop(0,'#fff');g.addColorStop(.35,p.col);g.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,22,0,7);ctx.fill();

@@ -310,6 +310,24 @@
                      "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\LamaGirl\\атаки\\удар рукой в присяде.png",
                      "fill":  590,
                      "white":  0.7
+                 },
+                 {
+                     "dewhite":  5,
+                     "stand":  "f0",
+                     "erode":  1,
+                     "name":  "lama_daze",
+                     "valley":  true,
+                     "frames":  6,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\LamaGirl\\мувмент\\ошеломление.png"
+                 },
+                 {
+                     "rows":  2,
+                     "name":  "lama_spitball",
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\LamaGirl\\атаки\\плевок снаряд.png",
+                     "stand":  0,
+                     "anchor":  "box",
+                     "frames":  8
                  }
              ]
 }
