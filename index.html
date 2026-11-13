@@ -377,7 +377,7 @@ CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'
 const LS=(n,frames,cw,ch,fps,o)=>sheet('assets/lama_'+n+'.png',frames,cw,ch,fps,{pal:1,...o});
 const LM_HAM=(o)=>LS('hammer',6,306,428,0,o),LM_AXE=(o)=>LS('axe',5,260,410,0,o),LM_UP=LS('upper',5,192,420,0,{hit:3});
 CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:5.6,power:1,special:'spit',pv:11,pc:'#c8e86a',voice:true,vp:'l_',
-  sp:{n:'spit',d:'wheel',b:'dropkick',g:'grab'},rave:true,pm:{dmg:7,kb:4,akb:1,stun:18,type:'mid',chip:1,y0:95,y1:125,special:true,pop:11}, // плевок: в воздухе подкидывает, раз за комбо
+  sp:{n:'spit',d:'wheel',b:'dropkick',g:'grab'},rave:true,cap:12,pm:{dmg:7,kb:4,akb:1,stun:18,type:'mid',chip:1,y0:95,y1:125,special:true,pop:11}, // плевок: в воздухе подкидывает, раз за комбо
   spn:{n:'плевок — снаряд',d:'колесо ↑↑',b:'удар двумя ногами →'},cp:'cpunch',
   // серии длинные (до 5 ударов): лёгкие удары держат противника в воздухе, концовки подбрасывают, бьют об пол или в стену
   str:{
@@ -887,7 +887,8 @@ function resolveHit(a,d,m,dir,isProj,ender){
   // на земле оглушение на кадр короче восстановления атакующего: без отмены продолжить нельзя (минус 1)
   d.state='hit';d.stateT=isProj||m.air?m.stun:Math.max(5,rem-1);d.flash=4;d.alpha=1;d.launched=air;
   if(air)d.jug++;
-  const decay=m.special?1:Math.max(.45,1-.05*d.jug); // чем дольше джаггл, тем ниже подбрасывает; спецприёмы — в полную силу
+  let decay=m.special?1:Math.max(.45,1-.05*d.jug);
+  if(a.ch.cap&&a.combo>a.ch.cap)decay*=m.special?.5:.25; // потолок комбо бойца: дальше противник почти не подлетает // чем дольше джаггл, тем ниже подбрасывает; спецприёмы — в полную силу
   d.vx=dir*(air&&!m.wall?(m.akb!==undefined?m.akb:Math.min(m.kb,2.5)):m.kb);
   if(m.gb&&!d.usedGB){
     if(air){d.vy=14;d.gbPending=true;}else{d.vy=-12;d.y-=1;d.usedGB=true;}
@@ -1284,8 +1285,8 @@ const COMBOS={
   LAMAGIRL:[
     {n:'базовое',hits:10,steps:['p1,p1,k2,k2,p2','p2,p1,k2,k1,p2']},
     {n:'длинное',hits:15,steps:['p1,p1,k2,k2,p2','@g']},
-    {n:'очень длинное',hits:25,steps:['p1,p1,k2,k2,p2','p2,p1,k2,k1,p2','p1,p1,k2,k2,p2','@g']},
-    {n:'самое длинное',hits:35,steps:['p1,p1,k2,k2,p2','p1,p1,k2,k2','p2,p1,k2,k1,p2','p1,p1,k2,k2,p2','p1,p1,k2,k2,p2','@d','p1,p1,k2,k2,p2','@g']}]};
+    {n:'очень длинное',hits:20,steps:['p1,p1,k2,k2,p2','p2,p1,k2,k1,p2','@g']},
+    {n:'самое длинное',hits:24,steps:['p1,p1,k2,k2,p2','p2,p1,k2,k1,p2','p1,p1,k2,k2','@g']}]};
 const TUT={i:-1,ps:0,demo:false,st:null,doneT:0,hits:0,failT:0};
 const tutList=()=>COMBOS[F[0].ch.name]||[];
 function tutDemo(on){
