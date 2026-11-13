@@ -39,21 +39,55 @@ const KEYS=[
 const BK=['p1','p2','k1','k2','s'];
 const newBuf=()=>({p1:0,p2:0,k1:0,k2:0,s:0});
 // геймпад (стандартная раскладка, DualSense): 0 крест, 1 круг, 2 квадрат, 3 треугольник, 4 L1, 5 R1, 6 L2, 7 R2, 12-15 крестовина
-const pads=()=>navigator.getGamepads?[...navigator.getGamepads()].filter(g=>g&&g.connected):[];
-const padPrev=[{},{}];
-function padInput(i){
-  const g=pads()[i],o={};
-  if(!g){padPrev[i]={};return o;}
+// Геймпады берутся в порядке первого нажатия: устройство, которое только числится подключённым (руль, наушники,
+// клавиатура с «геймпадным» режимом), номер игрока не занимает. Нестандартная раскладка (Firefox, DInput) тоже читается.
+const rawPads=()=>navigator.getGamepads?[...navigator.getGamepads()].filter(g=>g&&g.connected):[];
+let padAct=[];
+function padRead(g){
   const b=n=>!!(g.buttons[n]&&(g.buttons[n].pressed||g.buttons[n].value>.5));
   const ax=g.axes[0]||0,ay=g.axes[1]||0;
-  const cur={l:b(14)||ax<-.4,r:b(15)||ax>.4,u:b(12)||ay<-.6,d:b(13)||ay>.55,
-    p1:b(3),p2:b(2),k1:b(1),k2:b(0),blk:b(5),run:b(4),s:b(7)||b(6),g:b(6),start:b(9),back:b(8),list:b(17)||b(10)};
+  if(g.mapping==='standard')
+    return{l:b(14)||ax<-.4,r:b(15)||ax>.4,u:b(12)||ay<-.6,d:b(13)||ay>.55,
+      p1:b(3),p2:b(2),k1:b(1),k2:b(0),blk:b(5),run:b(4),s:b(7)||b(6),g:b(6),start:b(9),back:b(8),list:b(17)||b(10)};
+  // DInput-раскладка PlayStation: 0 квадрат, 1 крест, 2 круг, 3 треугольник; крестовина — «шляпа» на оси 9 или оси 6/7
+  let hl=false,hr=false,hu=false,hd=false;
+  const h=g.axes[9];
+  if(h!==undefined&&h>=-1.01&&h<=1.01){const k=Math.round((h+1)*3.5);hu=k===0||k===1||k===7;hr=k>=1&&k<=3;hd=k>=3&&k<=5;hl=k>=5&&k<=7;}
+  if(g.axes.length>=8&&g.axes.length<10){hl=g.axes[6]<-.5;hr=g.axes[6]>.5;hu=g.axes[7]<-.5;hd=g.axes[7]>.5;}
+  return{l:hl||ax<-.4,r:hr||ax>.4,u:hu||ay<-.6,d:hd||ay>.55,
+    p1:b(3),p2:b(0),k1:b(2),k2:b(1),blk:b(5),run:b(4),s:b(7)||b(6),g:b(6),start:b(9),back:b(8),list:b(13)||b(10)};
+}
+function padScan(){
+  const all=rawPads();
+  padAct=padAct.filter(i=>all.some(g=>g.index===i));
+  for(const g of all)if(!padAct.includes(g.index)&&(g.buttons.some(x=>x.pressed)||Math.abs(g.axes[0]||0)>.6||Math.abs(g.axes[1]||0)>.6))padAct.push(g.index);
+  return all;
+}
+const pads=()=>{const all=padScan();return padAct.map(i=>all.find(g=>g.index===i)).filter(Boolean);};
+const padPrev=[{},{}];
+// merge — слить все геймпады в одного игрока (игра по сети: какой бы ни взял в руки, он сработает)
+function padInput(i,merge){
+  const list=pads(),o={};
+  const src=merge?list:list[i]?[list[i]]:[];
+  if(!src.length){padPrev[i]={};return o;}
+  const cur={};
+  for(const g of src){const c=padRead(g);for(const k in c)cur[k]=cur[k]||c[k];}
   const pv=padPrev[i];
   for(const k of['p1','p2','k1','k2','s','start','back','list'])o[k]=cur[k]&&!pv[k];
   o.lE=cur.l&&!pv.l;o.rE=cur.r&&!pv.r;o.uE=cur.u&&!pv.u;o.dE=cur.d&&!pv.d;
   o.l=cur.l;o.r=cur.r;o.u=cur.u;o.d=cur.d;o.blk=cur.blk;o.run=cur.run;o.g=cur.g;
   if(o.p1||o.p2||o.k1||o.k2||o.start)audioInit();
   padPrev[i]=cur;return o;
+}
+// строка диагностики: что браузер видит от геймпадов прямо сейчас
+function padInfo(){
+  const all=padScan();
+  if(!all.length)return['Геймпад не виден: нажми на нём любую кнопку (вкладка должна быть активной)'];
+  return all.map(g=>{
+    const on=[];g.buttons.forEach((x,i)=>{if(x.pressed)on.push(i);});
+    const pl=padAct.indexOf(g.index);
+    return`${pl<0?'не активен':'игрок '+(pl+1)} · ${g.id.replace(/\s*\(.*$/,'').slice(0,34)} · ${g.mapping==='standard'?'стандарт':'нестандартная раскладка'}`+(on.length?` · кнопки ${on.join(',')}`:'');
+  });
 }
 let PAD=[{},{}],IN=[{},{}];
 function getInput(i){
@@ -981,7 +1015,7 @@ const netPack=o=>NK.reduce((m,k,i)=>m|(o[k]?1<<i:0),0);
 const netUnpack=m=>{const o={};NK.forEach((k,i)=>{o[k]=!!(m>>i&1);});return o;};
 // свой ввод: первый геймпад и любая из двух клавиатурных раскладок
 function netLocal(){
-  PAD=[padInput(0),{}];
+  PAD=[padInput(0,true),{}];
   const a=getInput(0),b=getInput(1),o={};
   for(const k of NK)o[k]=a[k]||b[k];
   o.start=!!PAD[0].start||pressed.has('Enter');
@@ -1163,6 +1197,7 @@ function drawNet(){
     txt((N.code+'_____').slice(0,5).split('').join(' '),W/2,275,84,'#ffd24a');
   }
   if(N.msg)txt(N.msg,W/2,410,18,'#ff9a7a','center',true);
+  padInfo().forEach((t,i)=>txt('Геймпад: '+t,W/2,450+i*15,12,/игрок/.test(t)?'#7dff8a':'#bbb','center',true));
   txt('Esc / Create — назад',W/2,H-30,14,'#999','center',true);
 }
 function drawNetHud(){
@@ -1430,8 +1465,8 @@ function drawMenu(){
   txt('[2] / ○   Два игрока',W/2,272,26,'#fff');
   txt('[3] / △   Тренировка (HorseMan)',W/2,304,26,'#ffd24a');
   txt('[4] / □   Игра по сети',W/2,336,26,'#7dff8a');
-  const n=pads().length,y=352;
-  txt(n?`Геймпадов подключено: ${n}`:'Геймпад: нажми любую кнопку на нём, чтобы он определился',W/2,y-18,14,n?'#7dff8a':'#999','center',true);
+  const y=392;
+  padInfo().forEach((t,i)=>txt('Геймпад: '+t,W/2,358+i*15,12,/игрок/.test(t)?'#7dff8a':'#bbb','center',true));
   txt('ГЕЙМПАД:  △ рука 1 · □ рука 2 · ○ нога 1 · ✕ нога 2 · R1 блок · L1 бег · R2 спецприём · L2 захват · крестовина / стик',W/2,y+8,15,'#ffe08a','center',true);
   txt('ИГРОК 1:  A / D · W прыжок · S присед · R рука 1 · F рука 2 · T нога 1 · G нога 2 · H блок · Shift бег · Y спец',W/2,y+34,15,'#9fd0ff','center',true);
   txt('ИГРОК 2:  ← / → · ↑ · ↓ · I рука 1 · K рука 2 · O нога 1 · L нога 2 · ; блок · правый Shift бег · P спец',W/2,y+60,15,'#ffb0a0','center',true);
