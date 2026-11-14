@@ -261,7 +261,7 @@ function musicSync(){
   const am=(ARENAS[G.arena||0].music)||MUSIC,fm=am.bad?MUSIC:am;
   const on=G.phase==='select'||G.phase==='stage'?MUSIC_SEL:G.phase==='menu'||G.phase==='net'||G.phase==='keys'?MUSIC_MENU:fm;
   for(const m of[MUSIC,MUSIC_SEL,MUSIC_MENU,MUSIC_HOSP])if(m!==on&&!m.paused)m.pause();
-  if(musicOff){if(!on.paused)on.pause();}
+  if(musicOff||!VID.done){if(!on.paused)on.pause();} // во время победного ролика музыка молчит
   else if(on.paused){if(on===MUSIC_SEL||on===MUSIC_MENU)on.currentTime=0;on.play().catch(()=>{});}
 }
 // сэмплы: в каждом файле несколько звуков подряд — играется кусок [файл, начало, конец] в секундах.
@@ -659,6 +659,22 @@ function mkF(i,chi,cpu){
     flash:0,walkT:0,alpha:1,running:false,buf:newBuf(),pose:clonePose(P.idle),ai:{t:0,hold:{}},
     seq:'',contactAt:-1,jug:0,comboDmg:0,maxCombo:0,usedSp:[],locked:false,keepBuf:false,breakT:0};
 }
+// победные ролики: после первого выигранного раунда — победная стойка, после выигранного матча — ролик победителя.
+// Ролик — только картинка и звук, на логику боя не влияет (по сети шаги одинаковые на обеих машинах).
+const WINVID={HORSEMAN:'horse',LAMAGIRL:'lama',PITBULL:'pit'},VIDS={};
+const VID={el:null,done:true};
+function vidGet(ch){
+  const n=WINVID[ch.name];if(!n)return null;
+  if(!VIDS[n]){const v=document.createElement('video');v.src='assets/win_'+n+'.mp4?v='+AV;v.preload='auto';v.playsInline=true;v.volume=.9;VIDS[n]=v;}
+  return VIDS[n];
+}
+function vidStart(ch){
+  vidStop();const v=vidGet(ch);if(!v)return;
+  VID.el=v;VID.done=false;v.muted=false;v.currentTime=0;
+  v.onended=v.onerror=()=>{if(VID.el===v)VID.done=true;};
+  v.play().catch(()=>{v.muted=true;v.play().catch(()=>{VID.done=true;});}); // без жеста пользователя — без звука
+}
+function vidStop(){if(VID.el)VID.el.pause();VID.el=null;VID.done=true;}
 function startMatch(){
   const A=arena();GY=A.gy;AL=A.al||236;AR=A.ar||1398;
   F=[mkF(0,G.sel[0],false),mkF(1,G.sel[1],G.mode===1)];
@@ -667,6 +683,7 @@ function startMatch(){
   if(G.mode===1)F[1].ai.skill=DIFF[G.diff][1];
   F[1].alt=F[0].ch===F[1].ch;
   G.round=1;startRound();
+  if(G.mode!==3)for(const f of F)vidGet(f.ch); // заранее подгрузить победные ролики обоих бойцов
 }
 function startRound(){
   for(const f of F)Object.assign(f,{x:WW/2+(f.i?180:-180),y:GY,vx:0,vy:0,facing:f.i?-1:1,hp:100,hpLag:100,energy:50,
@@ -1423,6 +1440,7 @@ function tick(net){
   if(net){IN=net;PAD=[{start:net[0].start},{start:net[1].start}];}
   else{PAD=[padInput(0),padInput(1)];IN=[getInput(0),getInput(1)];}
   const padStart=!!(PAD[0].start||PAD[1].start);
+  if(VID.el&&G.phase!=='end')vidStop(); // ушли с экрана победы (реванш, меню) — ролик стоп
   if(!net)musicKey();
   if(G.phase==='menu'){
     if(G.mGo>0){if(--G.mGo===0)menuDo(MENU_BTN[G.mi].act);return;} // кнопка «нажата» — пауза, потом переход
@@ -1481,6 +1499,8 @@ function tick(net){
     world(false);
     const w=G.winner;
     if(G.mode===3){if(G.t>130)startRound();return;} // тренировка ультры — сразу снова в тренировку
+    const fin=w&&w.wins>=2; // матч решён — вместо победной стойки ролик
+    if(fin){if(G.t>70){G.phase='end';G.t=0;vidStart(w.ch);}return;}
     if(G.t>60&&w&&w.y>=GY&&FREE.includes(w.state)){w.state='win';voice(w,'v_win');}
     if(G.t>200){
       if(F.some(f=>f.wins>=2)){G.phase='end';G.t=0;}
@@ -1488,7 +1508,9 @@ function tick(net){
     }
   }else if(G.phase==='end'){
     world(false);
-    if((!net&&pressed.has('Enter'))||padStart)startMatch();
+    const go=(!net&&pressed.has('Enter'))||padStart;
+    if(!net&&!VID.done){if(go)vidStop();} // первое нажатие — пропустить ролик
+    else if(go)startMatch();
   }
 }
 // ---------- ультра комбо ----------
@@ -2440,6 +2462,11 @@ function render(){
     if(G.ultraDone){txt(G.ultraDone>=ULT_N?'ИДЕАЛЬНОЕ УЛЬТРА!':'УЛЬТРА КОМБО!',W/2,210,76,'#ffd24a');txt(`${G.ultraDone} ударов`,W/2,262,40,'#ff5a4a');}
     else txt(G.timeout?'ВРЕМЯ!':'НОКАУТ!',W/2,230,96,'#ff5a4a');
     if(G.t>80)txt(G.winner?`${G.winner.ch.name} ПОБЕЖДАЕТ`:'НИЧЬЯ',W/2,300,40,'#fff');
+  }else if(G.phase==='end'&&VID.el&&!VID.done){
+    const v=VID.el;
+    ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+    if(v.readyState>=2&&v.videoWidth){const s=Math.max(W/v.videoWidth,H/v.videoHeight),vw=v.videoWidth*s,vh=v.videoHeight*s;ctx.drawImage(v,(W-vw)/2,(H-vh)/2,vw,vh);}
+    if(G.t>40)txt(NET.on?'Options — реванш':'Enter / Options — пропустить',W-20,H-18,16,'rgba(255,255,255,.7)','right');
   }else if(G.phase==='end'){
     const w=F.find(f=>f.wins>=2);
     txt('ПОБЕДИТЕЛЬ',W/2,200,50,'#fff');
