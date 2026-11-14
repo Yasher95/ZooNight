@@ -23,13 +23,14 @@
                  },
                  {
                      "name":  "pit_run",
-                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\бег.png",
-                     "frames":  6,
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\бег 2.png",
+                     "frames":  5,
                      "shed":  true,
                      "valley":  true,
                      "erode":  1,
                      "stand":  545,
-                     "anchor":  "box"
+                     "anchor":  "torso",
+                     "baseline":  true
                  },
                  {
                      "name":  "pit_block",

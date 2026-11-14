@@ -350,7 +350,7 @@ const CH=[
 //    hit — номер кадра удара (до него — замах, после — возврат)
 // размер ячейки берётся из самой картинки при загрузке (cw, ch в таблице — только до загрузки)
 // версия картинок: менять при каждой замене спрайтов, иначе браузеры игроков показывают старые из кэша
-const AV='20261114f';
+const AV='20261114g';
 function sheet(src,frames,cw,ch,fps,o){
   const img=new Image(),a={img,frames,cw,ch,fps,...o};
   img.onload=()=>{a.cw=img.naturalWidth/frames;a.ch=img.naturalHeight;};
@@ -459,7 +459,7 @@ CH.push({name:'PITBULL',body:'#555',pants:'#222',accent:'#c22',glove:'#333',spee
   aij:[['p1','p1','p2','k2'],['p2','p1','p2'],['k1','p2','p1','p2'],['p1','p2','p2'],['k2','p1','p2','k1'],['p1','p1','k1']],
   desc:'Спрайт · хватка',scale:.53,sprite:{
     idle:PS('idle',6,192,385,8),
-    walk:PS('walk',6,174,385,0,{cyc:1}),run:PS('run',6,212,362,0,{cyc:1}),
+    walk:PS('walk',6,174,385,0,{cyc:1}),run:PS('run',5,272,316,0,{cyc:1}),
     jump:PS('jump',6,238,370,0,{vy:1}),
     crouch:PS('crouch',6,190,384,30,{once:1,n:4}),
     block:PS('block',6,188,384,30,{once:1,n:4}),

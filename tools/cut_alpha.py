@@ -215,6 +215,9 @@ for job in cfg['jobs']:
         top, bot, lft, rgt = int(ys.min()), int(ys.max()), int(xs.min()), int(xs.max())
         if job.get('anchor') == 'box':
             ax = (lft + rgt) / 2
+        elif job.get('anchor') == 'torso':  # по середине верхних 45% силуэта (голова и корпус) — бег без дёрганья
+            t = xs[ys <= top + (bot - top) * 0.45]
+            ax = (int(t.min()) + int(t.max())) / 2
         else:
             feet = xs[ys >= bot - (bot - top) * 0.08]
             ax = (int(feet.min()) + int(feet.max())) / 2
