@@ -333,6 +333,18 @@
                      "frames":  8,
                      "shed":  true,
                      "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\ошеломление.png"
+                 },
+                 {
+                     "dewhite":  4,
+                     "anchor":  "box",
+                     "erode":  1,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\HorseMan\\мувмент\\жертва в воздухе.png",
+                     "stand":  376,
+                     "name":  "horseman_air",
+                     "frames":  8,
+                     "rows":  2,
+                     "valley":  true,
+                     "shed":  true
                  }
              ]
 }

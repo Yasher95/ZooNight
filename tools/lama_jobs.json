@@ -328,6 +328,28 @@
                      "stand":  0,
                      "anchor":  "box",
                      "frames":  8
+                 },
+                 {
+                     "dewhite":  4,
+                     "anchor":  "box",
+                     "erode":  1,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\LamaGirl\\атаки\\комбо в воздухе.png",
+                     "stand":  335,
+                     "name":  "lama_rave",
+                     "frames":  8,
+                     "valley":  true,
+                     "shed":  true
+                 },
+                 {
+                     "dewhite":  4,
+                     "anchor":  "box",
+                     "erode":  1,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\LamaGirl\\мувмент\\жертва в воздухе.png",
+                     "stand":  335,
+                     "name":  "lama_air",
+                     "frames":  8,
+                     "valley":  true,
+                     "shed":  true
                  }
              ]
 }
