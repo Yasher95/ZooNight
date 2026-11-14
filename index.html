@@ -32,6 +32,7 @@ addEventListener('keydown',e=>{
   audioInit();
 });
 addEventListener('keyup',e=>down.delete(e.code));
+addEventListener('pointerdown',()=>audioInit()); // любой клик или касание в окне включает звук и музыку
 addEventListener('blur',()=>down.clear());
 const KEYS_DEF=[
   {l:'KeyA',r:'KeyD',u:'KeyW',d:'KeyS',p1:'KeyR',p2:'KeyF',k1:'KeyT',k2:'KeyG',blk:'KeyH',s:'KeyY',g:'KeyU',run:'ShiftLeft'},
@@ -256,8 +257,12 @@ const MUSIC_MENU=new Audio('assets/audio/music_menu.mp3');MUSIC_MENU.loop=true;M
 const MUSIC_HOSP=new Audio('assets/audio/music_hospital.mp3');MUSIC_HOSP.loop=true;MUSIC_HOSP.volume=.3;MUSIC_HOSP.onerror=()=>{MUSIC_HOSP.bad=true;};
 let musicOff=false;
 // в меню, на экране выбора бойца и в бою — своя музыка
+// Браузер не даёт звуку играть до первого жеста пользователя (клик, касание, клавиша). Поэтому: одна попытка сразу
+// при загрузке (на знакомом сайте браузер может разрешить), дальше — как только был любой жест на странице.
+let musicTry=0;
 function musicSync(){
-  if(!ac)return;
+  const ua=navigator.userActivation;
+  if(!ac&&!(ua&&ua.hasBeenActive)&&musicTry++>0)return;
   const am=(ARENAS[G.arena||0].music)||MUSIC,fm=am.bad?MUSIC:am;
   const on=G.phase==='select'||G.phase==='stage'?MUSIC_SEL:G.phase==='menu'||G.phase==='net'||G.phase==='keys'?MUSIC_MENU:fm;
   for(const m of[MUSIC,MUSIC_SEL,MUSIC_MENU,MUSIC_HOSP])if(m!==on&&!m.paused)m.pause();
@@ -1459,7 +1464,7 @@ function tick(net){
   }
   if(G.phase==='menu'){
     if(G.mGo>0){if(--G.mGo===0)menuDo(MENU_BTN[G.mi].act);return;} // кнопка «нажата» — пауза, потом переход
-    if(demoAny())G.mIdle=0;else if(++G.mIdle>600&&!net){demoStart();return;} // 10 с без нажатий — демо
+    if(demoAny())G.mIdle=0;else if((G.mIdle=(G.mIdle||0)+1)>300&&!net){demoStart();return;} // 5 с без нажатий — демо
     const n=IN[0],p=PAD[0],k=c=>pressed.has(c);
     G.mi=G.mi||0;
     if(n.uE||k('ArrowUp')){G.mi=(G.mi+MENU_BTN.length-1)%MENU_BTN.length;samp('ui_sel',.6,1,0);}
