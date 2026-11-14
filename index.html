@@ -83,6 +83,7 @@ function padInput(i,merge){
   if(i===0&&(o.p1||o.p2||o.k1||o.k2||o.s||o.fx||o.fo||o.fs||o.ft||o.start))lastDev='pad';
   o.lE=cur.l&&!pv.l;o.rE=cur.r&&!pv.r;o.uE=cur.u&&!pv.u;o.dE=cur.d&&!pv.d;
   o.l=cur.l;o.r=cur.r;o.u=cur.u;o.d=cur.d;o.blk=cur.blk;o.run=cur.run;o.g=cur.g;
+  o.sH=!!cur.s;o.startH=!!cur.start; // зажаты (для сочетаний: держишь одну, жмёшь другую)
   if(o.p1||o.p2||o.k1||o.k2||o.start)audioInit();
   padPrev[i]=cur;return o;
 }
@@ -1488,7 +1489,7 @@ function training(){
     const v=VTEST[G.vt=((G.vt===undefined?-1:G.vt)+1)%VTEST.length];
     samp(v[0],.9,1,v[1]);G.vtMsg=`голос ${G.vt+1}/${VTEST.length}: ${v[2]}`;G.vtT=frame+240;
   }
-  if(pressed.has('KeyJ')||(PAD[0].start&&IN[0].s)){ // тренировка ультры: болванчик сразу ошеломлён, дальше как в бою
+  if(pressed.has('KeyJ')||(PAD[0].start&&PAD[0].sH)||(PAD[0].s&&PAD[0].startH)){ // тренировка ультры: болванчик сразу ошеломлён, дальше как в бою
     TUT.demo=false;startRound();G.log=[];const d=F[1];d.state='hit';d.dazeT=d.stateT=99;
     G.phase='ultra';G.t=0;G.ultra={w:F[0],d,run:false,n:0,t:0,train:true};snd('bell');return;
   }
