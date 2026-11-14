@@ -349,6 +349,7 @@ const HM_JAB=HS('jab',4,320,384,0,{hit:2}),HM_UP=HS('upper',5,204,418,0,{hit:3})
   HM_KNEE=HS('knee',5,302,384,0,{hit:2});
 CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'#fff',speed:5.2,power:1.05,special:'ram',voice:true,
   sp:{n:'ram',d:'rise',b:'mule',g:'grab'},
+  ultra:['jab','cross','hook','knee','elbow','backfist','kick','upper2','hkick','sidekick'],ultraFin:'round', // ультра комбо: удары по кругу и добивание
   // анимации: ключ — состояние (idle, walk, run, jump, crouch, block, cblock, hit_high/mid/low, chit, fall, down, win)
   // или имя удара из M (если нет — берётся поза удара, потом idle). Все атласы приведены к одной высоте стойки (tools/cut_alpha.py)
   desc:'Спрайт · таран',scale:.5,sprite:{
@@ -380,7 +381,8 @@ const LS=(n,frames,cw,ch,fps,o)=>sheet('assets/lama_'+n+'.png',frames,cw,ch,fps,
 const SPITBALL=sheet('assets/lama_spitball.png',8,174,119,0,{});
 const LM_HAM=(o)=>LS('hammer',6,306,428,0,o),LM_AXE=(o)=>LS('axe',5,260,410,0,o),LM_UP=LS('upper',5,192,420,0,{hit:3});
 CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:5.6,power:1,special:'spit',pv:11,pc:'#c8e86a',voice:true,vp:'l_',
-  sp:{n:'spit',d:'wheel',b:'dropkick',g:'grab'},rave:true,cap:12,psheet:SPITBALL,pm:{dmg:7,kb:4,akb:1,stun:18,type:'mid',chip:1,y0:95,y1:125,special:true,pop:11}, // плевок: в воздухе подкидывает, раз за комбо
+  sp:{n:'spit',d:'wheel',b:'dropkick',g:'grab'},
+  ultra:['lbf','lhead','lknee','laxe','lbf','lupper','lhead','lspin'],ultraFin:'lround',rave:true,cap:12,psheet:SPITBALL,pm:{dmg:7,kb:4,akb:1,stun:18,type:'mid',chip:1,y0:95,y1:125,special:true,pop:11}, // плевок: в воздухе подкидывает, раз за комбо
   spn:{n:'плевок — снаряд',d:'колесо ↑↑',b:'удар двумя ногами →'},cp:'cpunch',
   // серии длинные (до 5 ударов): лёгкие удары держат противника в воздухе, концовки подбрасывают, бьют об пол или в стену
   str:{
@@ -590,12 +592,17 @@ function startRound(){
     seq:'',contactAt:-1,jug:0,comboDmg:0,usedSp:[],locked:false,keepBuf:false,breakT:0,gr:null,grabRot:undefined,
     energy:G.mode===3?100:25,brUsed:false,tInv:0,thT:0,guard:100,bdCd:0,ai:{t:0,hold:{},skill:f.ai.skill},wb:false,gbPending:false,usedWB:false,usedGB:false,crouching:false});
   projs=[];parts=[];hitstop=0;
-  G.phase='intro';G.t=0;G.timer=3600;G.winner=null;G.timeout=false;
+  G.phase='intro';G.t=0;G.timer=3600;G.winner=null;G.timeout=false;G.ultra=null;G.ultraDone=0;
   if(G.mode===3){F[0].x=WW/2-100;F[1].x=WW/2+100;G.phase='fight';G.t=99;}
   camX=camTarget();
 }
 function endRound(w,timeout){
   if(G.phase!=='fight'||G.mode===3)return;
+  // решающий нокаут: противник с нулём здоровья стоит ошеломлённым, победитель может запустить ультра комбо (спецприём)
+  if(w&&!timeout&&w.wins+1>=2){
+    w.wins++;G.phase='ultra';G.t=0;G.ultra={w,d:F[1-w.i],run:false,n:0,t:0,next:0};
+    hitstop=12;shake=Math.max(shake,14);snd('bell');return;
+  }
   G.phase='ko';G.t=0;G.winner=w;G.timeout=!!timeout;
   if(w)w.wins++;
   snd(timeout?'bell':'ko');
@@ -1277,6 +1284,8 @@ function tick(net){
       const a=F[0],b=F[1];
       endRound(a.hp>b.hp?a:b.hp>a.hp?b:null,true);
     }
+  }else if(G.phase==='ultra'){
+    ultraTick();
   }else if(G.phase==='ko'){
     if(!G.timeout&&G.t<60&&G.t%3)return; // замедление на нокауте
     world(false);
@@ -1289,6 +1298,58 @@ function tick(net){
   }else if(G.phase==='end'){
     world(false);
     if((!net&&pressed.has('Enter'))||padStart)startMatch();
+  }
+}
+// ---------- ультра комбо ----------
+// окно ULT_WIN кадров на нажатие спецприёма, потом ULT_N ударов всё быстрее и добивание, отбрасывающее противника
+const ULT_WIN=150,ULT_N=30;
+function finishUltra(U,ultra){
+  const w=U.w,d=U.d,dir=w.facing;
+  w.state='idle';w.vx=0;
+  d.state='ko';d.dazeT=0;d.y=Math.min(d.y,GY-1);d.vy=ultra?-15:-7;d.vx=dir*(ultra?9:5);d.flash=6;
+  G.phase='ko';G.t=0;G.winner=w;G.timeout=false;G.ultraDone=ultra?w.combo:0;
+  shake=ultra?24:16;hitstop=ultra?14:4;
+  if(ultra){blood(d.x-dir*20,d.y-110,dir,60);burst(d.x,d.y-110,'#ffd24a',30,9);snd('hit');}
+  snd('ko');voice(d,'v_ko');
+  if(!w.cpu)rumble(w.i,true);
+  if(!d.cpu)rumble(d.i,true);
+}
+function ultraTick(){
+  const U=G.ultra,w=U.w,d=U.d;
+  if(!U.run){ // окно: можно двигаться и бить, противник стоит ошеломлённым
+    world(true);
+    d.hp=0;
+    if(d.y>=GY&&d.state!=='hit'){d.state='hit';d.launched=false;d.vy=0;}
+    if(d.state==='hit'){d.stateT=99;if(d.y>=GY)d.dazeT=99;}
+    const press=w.cpu?G.t===40:!!IN[w.i].s;
+    if(press&&w.y>=GY&&!['grab','throw','hit','ko'].includes(w.state)){
+      U.run=true;U.t=0;U.n=0;U.next=10;
+      w.state='ultra';w.vx=0;w.facing=d.x>=w.x?1:-1;w.combo=0;w.comboDmg=0;w.uKey=null;w.gr=null;
+      d.state='hit';d.dazeT=0;d.stateT=999;d.launched=false;d.facing=-w.facing;
+      hitstop=10;shake=12;G.uFlash=frame+14;burst(w.x,w.y-110,'#ff3a3a',24,8);snd('swing');voice(w,'v_sp');
+    }else if(G.t>ULT_WIN)finishUltra(U,false);
+    return;
+  }
+  if(hitstop>0){hitstop--;return;}
+  U.t++;
+  d.y=Math.min(GY,d.y+14);d.vy=0;d.vx*=.6;
+  const tx=clamp(d.x-w.facing*70,AL,AR);w.x+=(tx-w.x)*.45;w.vx=0;w.y=GY;
+  world(false);
+  w.state='ultra';d.state='hit';d.stateT=999;d.dazeT=0;
+  if(U.n<ULT_N&&U.t>=U.next){
+    const L=w.ch.ultra||['jab','cross','hook','kick'];
+    w.uKey=L[U.n%L.length];w.uT0=frame;U.n++;
+    U.next=U.t+Math.max(3,8-(U.n/5|0)); // всё быстрее
+    const dmg=1*w.ch.power;
+    w.combo++;w.comboT=110;w.maxCombo=Math.max(w.maxCombo||0,w.combo);w.comboDmg+=dmg;
+    d.hitLv=['high','mid','low'][U.n%3];d.anKey=null;d.flash=3;d.x=clamp(d.x+w.facing*2.5,AL,AR);
+    const hx=d.x-w.facing*20,hy=d.y-60-(U.n*37%90);
+    blood(hx,hy,w.facing,14);burst(hx,hy,'#ffd24a',6);snd('hit');if(U.n%2)snd('swing');
+    voice(d,'v_hurt',.25);if(U.n%6===0)voice(w,'v_atk');
+    shake=Math.max(shake,4+U.n/4);hitstop=U.n%5===0?3:1;
+    if(!w.cpu)rumble(w.i,U.n%5===0);
+  }else if(U.n>=ULT_N&&U.t>=U.next+4){
+    w.uKey=w.ch.ultraFin||w.uKey;w.uT0=frame;finishUltra(U,true);
   }
 }
 function toSelect(){G.phase='select';G.ok=[false,false];G.selT=0;snd('bell');}
@@ -1721,7 +1782,7 @@ function drawSprite(f){
   const key=st==='attack'?(sp[f.mname]?f.mname:f.move.pose):st==='walk'&&f.running&&sp.run?'run':
     st==='hit'?(f.dazeT>0&&f.y>=GY?'daze':f.y<GY?'fall':f.crouching&&sp.chit?'chit':sp['hit_'+f.hitLv]?'hit_'+f.hitLv:'hit'):
     blk?(f.crouching&&sp.cblock?'cblock':'block'):st==='ko'?(f.y<GY?'fall':'down'):
-    st==='grabbed'&&f.raveHeld&&sp.air?'air':st==='grab'&&f.gr&&f.gr.kind?f.gr.akey:st==='grab'&&sp.slam?'slam':st==='throw'&&sp.throwHold?'throwHold':st;
+    st==='ultra'?(f.uKey&&sp[f.uKey]?f.uKey:'idle'):st==='grabbed'&&f.raveHeld&&sp.air?'air':st==='grab'&&f.gr&&f.gr.kind?f.gr.akey:st==='grab'&&sp.slam?'slam':st==='throw'&&sp.throwHold?'throwHold':st;
   // смена анимации: отсчёт кадров с нуля; из приседа в присед (блок сидя, удар сидя) — без повторного приседания
   const lowNow=key==='crouch'||key==='cblock'||key==='chit'||(st==='attack'&&!!f.move.crouch);
   if(f.anKey!==key){
@@ -1744,7 +1805,8 @@ function drawSprite(f){
     else if(f.at<rc0)fr=h;                                            // удар
     else if(post)fr=h+1+Math.min(post-1,Math.floor((f.at-rc0)/Math.max(1,m.rc-3)*post)); // возврат
     else fr=m.air||f.at<rc0+(m.rc-3)*.6?h:0;
-  }else if(key==='slam'){const g=f.gr;fr=g&&g.phase==='swing'&&GR.sw[g.n]?Math.min(n-1,Math.floor(g.t/GR.sw[g.n]*n)):n-1;}
+  }else if(st==='ultra'&&f.uKey){const h=an.hit!==undefined?an.hit:n-1;fr=frame-f.uT0<2?Math.max(0,h-1):h;}
+  else if(key==='slam'){const g=f.gr;fr=g&&g.phase==='swing'&&GR.sw[g.n]?Math.min(n-1,Math.floor(g.t/GR.sw[g.n]*n)):n-1;}
   else if(st==='grab'&&f.gr&&f.gr.kind){const g=f.gr,h=an.hit||0;fr=g.phase==='rise'?Math.min(n-1,g.t/5|0):g.phase==='fin'?Math.min(Math.max(0,h-1),Math.floor(g.t/14*h)):g.ht>0?h:Math.max(0,h-1);}
   else if(own&&an.cyc)fr=Math.floor((((f.walkT/6.283)%1)+1)%1*n);
   else if(own&&an.vy)fr=f.vy<-9?2:f.vy<-3?3:f.vy<4?4:5;
@@ -2016,8 +2078,21 @@ function render(){
   for(const f of F)if(f.state==='grab'&&f.gr&&f.gr.phase==='qte')drawQTE(f);
   if(G.phase==='intro')txt(`РАУНД ${G.round}`,W/2,250,80,'#ffd24a');
   else if(G.phase==='fight'&&G.t<45)txt('БОЙ!',W/2,250,100,'#ff5a4a');
+  else if(G.phase==='ultra'){
+    const U=G.ultra,w=U.w;
+    if(!U.run){
+      const k=1-G.t/ULT_WIN;
+      txt('ДОБЕЙ!',W/2,210,92,frame&8?'#ff3a3a':'#ffd24a');
+      txt(w.cpu?'ИИ готовит ультра комбо…':`${w.i?'ИГРОК 2':'ИГРОК 1'}: ${ctlLabel('s',NET.on?0:w.i)} — УЛЬТРА КОМБО`,W/2,262,28,'#fff');
+      ctx.fillStyle='#000';ctx.fillRect(W/2-160,282,320,12);ctx.fillStyle='#ff3a3a';ctx.fillRect(W/2-158,284,316*Math.max(0,k),8);
+    }else{
+      ctx.fillStyle=`rgba(255,30,30,${G.uFlash>frame?.35:.08+.05*Math.sin(frame*.5)})`;ctx.fillRect(0,0,W,H);
+      txt('УЛЬТРА КОМБО',W/2,130,72,frame&4?'#ffd24a':'#ff3a3a');
+    }
+  }
   else if(G.phase==='ko'){
-    txt(G.timeout?'ВРЕМЯ!':'НОКАУТ!',W/2,230,96,'#ff5a4a');
+    if(G.ultraDone){txt('УЛЬТРА КОМБО!',W/2,210,80,'#ffd24a');txt(`${G.ultraDone} ударов`,W/2,262,40,'#ff5a4a');}
+    else txt(G.timeout?'ВРЕМЯ!':'НОКАУТ!',W/2,230,96,'#ff5a4a');
     if(G.t>80)txt(G.winner?`${G.winner.ch.name} ПОБЕЖДАЕТ`:'НИЧЬЯ',W/2,300,40,'#fff');
   }else if(G.phase==='end'){
     const w=F.find(f=>f.wins>=2);
