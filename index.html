@@ -218,7 +218,7 @@ function moveList(ch){
   const l=ctlLabel,adv=[[],[],[],[]],STR=ch.str||window.STR_ALL,cs=ch.sp||{};
   const rows=Object.keys(STR).filter(k=>!Object.keys(STR).some(o=>o.startsWith(k+',')))
     .map(k=>{const b=k.split(','),ks=b.map((_,i)=>b.slice(0,i+1).join(','));adv.push(ks.map(s=>advOf(s,M[STR[s]],ch)));
-      return b.map(x=>l(x)).join(' ')+'  '+ks.map(s=>LV[M[STR[s]].type]).join('')+moveTag(M[STR[k]]).replace(' — подброс',' ↑').replace(' — отскок от пола',' ↓').replace(' — в стену',' →').replace(' — ошеломление',' ✶');});
+      return b.map(x=>l(x)).join(' ');}); // только кнопки серии (уровни ударов и подбросы не пишем)
   rows.unshift('В верх · С середина · Н низ · О оверхед','блок стоя: В С О · блок сидя: В С Н','цифры — в блоке: + ты первый · − ты открыт','↑ подброс · ↓ от пола · → в стену · ✶ ошеломление');
   const sp=(s,n)=>{rows.push(s);adv[rows.length-1]=[M[n].badv];};
   rows.push('');sp(`назад + ${l('p2')} — оверхед (О), отскок`,'smash');rows.push('удары в прыжке — оверхед (О)');
