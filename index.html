@@ -221,7 +221,7 @@ function moveList(ch){
       return b.map(x=>l(x)).join(' ');}); // только кнопки серии (уровни ударов и подбросы не пишем)
   rows.unshift('В верх · С середина · Н низ · О оверхед','блок стоя: В С О · блок сидя: В С Н','цифры — в блоке: + ты первый · − ты открыт','↑ подброс · ↓ от пола · → в стену · ✶ ошеломление');
   const sp=(s,n)=>{rows.push(s);adv[rows.length-1]=[M[n].badv];};
-  rows.push('');sp(`назад + ${l('p2')} — оверхед (О), отскок`,'smash');rows.push('удары в прыжке — оверхед (О)');
+  rows.push('');sp(`назад + ${l('p2')} — оверхед (О), отскок`,'smash');if(ch.fp2)sp(`вперёд + ${l('p2')} — удар курткой, далеко →`,ch.fp2);rows.push('удары в прыжке — оверхед (О)');
   if(ch.cp)sp(`${l('d')} + ${l('p1')}/${l('p2')} — удар рукой сидя`,ch.cp);else sp(`${l('d')} + ${l('p1')}/${l('p2')} — апперкот ↑`,'upper');sp(`${l('d')} + ${l('k1')}/${l('k2')} — подсечка`,'sweep');rows.push('');
   if(ch.spn){rows.push(`${l('s')} — ${ch.spn.n}`);sp(`${l('d')} + ${l('s')} — ${ch.spn.d}`,cs.d);sp(`назад + ${l('s')} — ${ch.spn.b}`,cs.b);}
   else{sp(`${l('s')} — таран ↑`,'ram');sp(`${l('d')} + ${l('s')} — подъём ↑↑`,'rise');sp(`назад + ${l('s')} — лягание →`,'mule');}
@@ -347,7 +347,7 @@ const CH=[
 //    hit — номер кадра удара (до него — замах, после — возврат)
 // размер ячейки берётся из самой картинки при загрузке (cw, ch в таблице — только до загрузки)
 // версия картинок: менять при каждой замене спрайтов, иначе браузеры игроков показывают старые из кэша
-const AV='20261114d';
+const AV='20261114e';
 function sheet(src,frames,cw,ch,fps,o){
   const img=new Image(),a={img,frames,cw,ch,fps,...o};
   img.onload=()=>{a.cw=img.naturalWidth/frames;a.ch=img.naturalHeight;};
@@ -391,7 +391,7 @@ const LS=(n,frames,cw,ch,fps,o)=>sheet('assets/lama_'+n+'.png',frames,cw,ch,fps,
 const SPITBALL=sheet('assets/lama_spitball.png',8,174,119,0,{});
 const LM_HAM=(o)=>LS('hammer',6,306,428,0,o),LM_AXE=(o)=>LS('axe',5,260,410,0,o),LM_UP=LS('upper',5,192,420,0,{hit:3});
 CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:5.6,power:1,special:'spit',pv:11,pc:'#c8e86a',voice:true,vp:'l_',
-  sp:{n:'spit',d:'wheel',b:'dropkick',g:'grab'},
+  sp:{n:'spit',d:'wheel',b:'dropkick',g:'grab'},fp2:'ljacket',
   ultraSeq:['p2','k2','p1','p1','k1','k2','p2','p1','k1','k1'],ultraAn:{p1:['lbf'],p2:['lhead'],k1:['laxe','lspin'],k2:['lknee']},ultraFin:'lround',rave:true,cap:12,psheet:SPITBALL,pm:{dmg:7,kb:4,akb:1,stun:18,type:'mid',chip:1,y0:95,y1:125,special:true,pop:11}, // плевок: в воздухе подкидывает, раз за комбо
   spn:{n:'плевок — снаряд',d:'колесо ↑↑',b:'удар двумя ногами →'},cp:'cpunch',
   // серии длинные (до 5 ударов): лёгкие удары держат противника в воздухе, концовки подбрасывают, бьют об пол или в стену
@@ -418,7 +418,7 @@ CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',
     daze:LS('daze',6,194,385,8),hit_high:LS('hit_high',3,222,383,18,{once:1}),hit_mid:LS('hit_mid',3,310,383,18,{once:1}),hit_low:LS('hit_low',3,300,383,18,{once:1}),
     chit:LS('chit',3,290,274,14,{once:1}),
     fall:LS('air',8,238,365,10,{once:1,f0:1,n:5}),air:LS('air',8,238,365,8,{f0:2,n:3}),down:LS('fall',10,466,365,14,{once:1,f0:7,n:3}),
-    lbf:LS('backfist',5,280,386,0,{hit:3}),lhead:LS('headbutt',4,288,383,0,{hit:2}),ldaze:LS('headbutt',4,288,383,0,{hit:2}),
+    lbf:LS('backfist',5,280,386,0,{hit:3}),ljacket:LS('jacket',6,454,384,0,{hit:2}),lhead:LS('headbutt',4,288,383,0,{hit:2}),ldaze:LS('headbutt',4,288,383,0,{hit:2}),
     lknee:LM_AXE({n:2,hit:1}),laxe:LM_AXE({hit:2}),lhammer:LM_HAM({hit:3}),smash:LM_HAM({hit:3}),
     lupper:LM_UP,upper:LM_UP,lround:LS('round',6,304,401,0,{hit:3}),lspin:LS('spin',6,404,407,0,{hit:3}),
     cpunch:LS('cpunch',8,312,291,0,{hit:4}),sweep:LS('sweep',7,582,283,0,{f0:4,n:3,hit:1}),
@@ -494,6 +494,8 @@ const M={
   throwEnd:{su:0,ac:0,rc:24,pose:'hammer',special:true},
   // ошеломляющие концовки серий: противник на земле шатается daze кадров — можно начать новую серию (раз за комбо)
   hdaze:  {su:7,ac:4,rc:14,dmg:6,reach:72, y0:110,y1:160,kb:1.5,stun:20,type:'mid', pose:'hook',  adv:7,daze:52,heavy:true},
+  // лама: удар курткой (вперёд + рука 2) — снимает куртку и хлещет ею издалека, медленный, в стену
+  ljacket:{su:13,ac:4,rc:17,dmg:8,reach:112,y0:90,y1:175,kb:11,stun:22,type:'mid',pose:'hook',adv:2,wall:true,heavy:true},
   ldaze:  {su:7,ac:4,rc:13,dmg:6,reach:70, y0:110,y1:160,kb:1.5,stun:20,type:'mid', pose:'hook',  adv:8,daze:50,heavy:true},
   // ЛамаГёрл: свои удары серий, удар рукой сидя и спецприёмы (плевок — снаряд, колесо, удар двумя ногами)
   lbf:    {su:4,ac:3,rc:8, dmg:3,reach:84, y0:120,y1:158,kb:3,  stun:15,type:'high',pose:'cross', adv:3,pop:5.6},
@@ -511,7 +513,7 @@ const M={
 };
 // преимущество в блоке (кадры): до -2 безопасно, от -5 и ниже наказывается
 const BADV={jab:1,cross:-2,hook:-3,backfist:-4,elbow:-3,upper2:-13,hammer:-7,kick:-2,sidekick:-6,lowkick:-4,knee:-3,
-  riseknee:-13,hkick:-5,round:-11,upper:-13,sweep:-13,dash:-14,ram:-15,rise:-20,mule:-12,hdaze:-12,ldaze:-12,
+  riseknee:-13,hkick:-5,round:-11,upper:-13,sweep:-13,dash:-14,ram:-15,rise:-20,mule:-12,hdaze:-12,ldaze:-12,ljacket:-9,
   lbf:1,lhead:-2,lknee:-3,laxe:-5,lhammer:-7,lupper:-13,lround:-11,lspin:-12,cpunch:-1,wheel:-20,dropkick:-13};
 for(const k in BADV)M[k].badv=BADV[k];
 // у серий своё преимущество: плюсовые серии продолжают давление, минусовые оставляют открытым
@@ -974,6 +976,7 @@ function updF(f,o,inp){
         if(dir)f.walkT+=(f.running?.36:.22)*dir*f.facing;
         const b=BTN.find(b=>f.buf[b]>0);
         if(b==='p2'&&dir===-f.facing)startMove(f,'smash','');
+        else if(b==='p2'&&dir===f.facing&&f.ch.fp2)startMove(f,f.ch.fp2,''); // вперёд + рука 2 — свой удар бойца
         else if(b)startMove(f,strOf(f)[b],b);
         else if(inp.run&&dir===-f.facing&&!f.bdCd){ // отскок назад: уходит от броска, но 16 кадров открыт для удара
           startMove(f,'backdash','');f.vx=-f.facing*11;f.bdCd=34;f.tInv=12;
@@ -1186,6 +1189,7 @@ function aiInput(f,o){
     if(o.stateT>6)return inp;
   }
   const r=R();
+  if(f.ch.fp2&&dist>105&&dist<150&&r<.1){inp[fw]=1;inp.p2=1;ai.t=2;return inp;} // удар издалека
   if(dist>100){
     if(r<.06){ai.hold={[fw]:1,u:1};ai.t=3;}
     else if(r<.7){ai.hold={[fw]:1,run:dist>260?1:0};ai.t=5+(R()*8|0);}
@@ -1962,10 +1966,7 @@ function hud(){
 }
 function drawQTE(f){
   const g=f.gr,n=g.qte.length,bw=46,x0=clamp(f.x-camX-n*bw/2,20,W-20-n*bw),y=g.kind?Math.min(GY-70,f.y+34):GY-285; // у воздушной серии — под бойцами
-  if(G.mode!==3){ // в бою кнопки не подсказываются — только полоска времени
-    const k=clamp(g.qt/g.qmax,0,1),bx=clamp(f.x-camX-70,20,W-160);
-    ctx.fillStyle='#000';ctx.fillRect(bx,y+bw,140,8);ctx.fillStyle=k<.35?'#ff5a4a':'#4ad8ff';ctx.fillRect(bx+2,y+bw+2,136*k,4);return;
-  }
+  if(G.mode!==3)return; // в бою никаких подсказок
   txt(g.kind?`ЖМИ! каждая кнопка — удар · фаза ${g.n+1} из 2`:`ЖМИ! удар ${g.n+1} из 3`,x0+n*bw/2,y-12,18,'#ffd24a');
   for(let i=0;i<n;i++){
     const done=i<g.qi,cur=i===g.qi;
@@ -2166,7 +2167,7 @@ function render(){
       const k=1-G.t/ULT_WIN;
       txt('ДОБЕЙ!',W/2,210,92,frame&8?'#ff3a3a':'#ffd24a');
       if(G.mode===3)txt(w.cpu?'ИИ готовит ультра комбо…':`${w.i?'ИГРОК 2':'ИГРОК 1'}: ${ctlLabel('s',NET.on?0:w.i)} — УЛЬТРА КОМБО, дальше кнопки по цепочке`,W/2,262,24,'#fff');
-      ctx.fillStyle='#000';ctx.fillRect(W/2-160,282,320,12);ctx.fillStyle='#ff3a3a';ctx.fillRect(W/2-158,284,316*Math.max(0,k),8);
+      if(G.mode===3){ctx.fillStyle='#000';ctx.fillRect(W/2-160,282,320,12);ctx.fillStyle='#ff3a3a';ctx.fillRect(W/2-158,284,316*Math.max(0,k),8);}
       if(G.mode===3){ // цепочка кнопок ультры — подсказка только в тренировке
         const seq=w.ch.ultraSeq||[];txt('цепочка ультры (повторяется по кругу):',W/2,326,16,'#ffd24a','center',true);
         ultraRow(w,0,seq.length,-1,336,44);
@@ -2181,7 +2182,7 @@ function render(){
         ultraRow(w,0,seq.length,U.n%seq.length,244,36);
       }
       const k=clamp(1-(U.t-U.last)/ultT(U.n),0,1);
-      ctx.fillStyle='#000';ctx.fillRect(x0+4,y+bw-2,cnt*bw-8,8);ctx.fillStyle=k<.35?'#ff5a4a':'#4ad8ff';ctx.fillRect(x0+6,y+bw,(cnt*bw-12)*k,4);
+      if(G.mode===3){ctx.fillStyle='#000';ctx.fillRect(x0+4,y+bw-2,cnt*bw-8,8);ctx.fillStyle=k<.35?'#ff5a4a':'#4ad8ff';ctx.fillRect(x0+6,y+bw,(cnt*bw-12)*k,4);} // полоска времени — только в тренировке
     }
   }
   else if(G.phase==='ko'){

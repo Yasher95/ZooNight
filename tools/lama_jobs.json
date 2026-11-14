@@ -350,6 +350,16 @@
                      "frames":  8,
                      "valley":  true,
                      "shed":  true
+                 },
+                 {
+                     "dewhite":  4,
+                     "stand":  "f0",
+                     "erode":  1,
+                     "name":  "lama_jacket",
+                     "valley":  true,
+                     "frames":  6,
+                     "shed":  true,
+                     "src":  "C:\\Users\\Yasher\\Desktop\\Новая папка\\LamaGirl\\атаки\\удар курткой.webp"
                  }
              ]
 }
