@@ -390,7 +390,7 @@ CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'
 const LS=(n,frames,cw,ch,fps,o)=>sheet('assets/lama_'+n+'.png',frames,cw,ch,fps,{pal:1,...o});
 const SPITBALL=sheet('assets/lama_spitball.png',8,174,119,0,{});
 const LM_HAM=(o)=>LS('hammer',6,306,428,0,o),LM_AXE=(o)=>LS('axe',5,260,410,0,o),LM_UP=LS('upper',5,192,420,0,{hit:3});
-CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:5.6,power:1,special:'spit',pv:11,pc:'#c8e86a',voice:true,vp:'l_',
+CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:5.6,power:1.05,special:'spit',pv:11,pc:'#c8e86a',voice:true,vp:'l_',
   sp:{n:'spit',d:'wheel',b:'dropkick',g:'grab'},fp2:'ljacket',
   ultraSeq:['p2','k2','p1','p1','k1','k2','p2','p1','k1','k1'],ultraAn:{p1:['lbf'],p2:['lhead'],k1:['laxe','lspin'],k2:['lknee']},ultraFin:'lround',rave:true,cap:12,psheet:SPITBALL,pm:{dmg:7,kb:4,akb:1,stun:18,type:'mid',chip:1,y0:95,y1:125,special:true,pop:11}, // плевок: в воздухе подкидывает, раз за комбо
   spn:{n:'плевок — снаряд',d:'колесо ↑↑',b:'удар двумя ногами →'},cp:'cpunch',
@@ -593,7 +593,8 @@ function mkF(i,chi,cpu){
 function startMatch(){
   const A=arena();GY=A.gy;AL=A.al||236;AR=A.ar||1398;
   F=[mkF(0,G.sel[0],false),mkF(1,G.sel[1],G.mode===1)];
-  if(G.mode===3){F[1].ch=DUMMY;F[1].dummy=true;G.dummy=0;G.log=[];G.list=true;TUT.i=-1;TUT.demo=false;TUT.ps=0;}
+  if(G.mode===3){ // соперник в тренировке — второй герой (ведёт себя как манекен: стоит, сидит или блокирует)
+    const o=GRID.find(c=>c>=0&&c!==G.sel[0]);F[1]=mkF(1,o!==undefined?o:G.sel[0],false);F[1].dummy=true;G.dummy=0;G.log=[];G.list=true;TUT.i=-1;TUT.demo=false;TUT.ps=0;}
   if(G.mode===1)F[1].ai.skill=DIFF[G.diff][1];
   F[1].alt=F[0].ch===F[1].ch;
   G.round=1;startRound();
@@ -1259,14 +1260,16 @@ function tick(net){
   const padStart=!!(PAD[0].start||PAD[1].start);
   if(!net)musicKey();
   if(G.phase==='menu'){
-    if(pressed.has('Digit1')||pressed.has('Numpad1')||PAD[0].fx){G.mode=1;toSelect();}
-    else if(pressed.has('Digit2')||pressed.has('Numpad2')||PAD[0].fo){G.mode=2;toSelect();}
-    else if(pressed.has('Digit3')||pressed.has('Numpad3')||PAD[0].ft){G.mode=3;G.sel=[GRID.includes(G.trainCh)?G.trainCh:GRID[0],0];snd('bell');G.phase='stage';G.stRow=0;G.selT=0;} // тренировка: сначала арена
-    else if(pressed.has('Digit4')||pressed.has('Numpad4')||PAD[0].fs){G.phase='net';NET.ui='';NET.msg='';snd('bell');}
-    else if(pressed.has('Digit5')||pressed.has('Numpad5')||PAD[0].start){G.phase='keys';KS.tab=lastDev==='pad'?2:0;KS.row=0;KS.wait=false;KS.msg='';snd('bell');}
+    if(G.mGo>0){if(--G.mGo===0)menuDo(MENU_BTN[G.mi].act);return;} // кнопка «нажата» — пауза, потом переход
+    const n=IN[0],p=PAD[0],k=c=>pressed.has(c);
+    G.mi=G.mi||0;
+    if(n.uE||k('ArrowUp')){G.mi=(G.mi+MENU_BTN.length-1)%MENU_BTN.length;samp('ui_sel',.6,1,0);}
+    if(n.dE||k('ArrowDown')){G.mi=(G.mi+1)%MENU_BTN.length;samp('ui_sel',.6,1,0);}
+    for(let d=1;d<=5;d++)if(k('Digit'+d)||k('Numpad'+d)){G.mi=MENU_BTN.findIndex(b=>b.act===d);G.mGo=10;snd('bell');}
+    if(!G.mGo&&(k('Enter')||k('Space')||p.fx||p.start||n.p1||G.mClick)){G.mGo=10;snd('bell');}
+    G.mClick=false;
     return;
-  }
-  if(G.phase==='net'){netMenu();return;}
+  }  if(G.phase==='net'){netMenu();return;}
   if(G.phase==='keys'){keysMenu();return;}
   if(!net&&(pressed.has('Escape')||PAD[0].back||PAD[1].back)){if(G.phase==='stage'&&G.mode!==3)toSelect();else G.phase='menu';return;}
   if(G.phase==='select'){
@@ -1382,7 +1385,14 @@ function ultraTick(){
     if(!w.cpu)rumble(w.i,U.n%10===0);
     if(U.n>=ULT_N){w.uKey=w.ch.ultraFin||w.uKey;w.uT0=frame;finishUltra(U,true);}
   }else if(U.t-U.last>ultT(U.n)){w.uKey=w.ch.ultraFin||w.uKey;w.uT0=frame;finishUltra(U,true);} // не успел — добивание
-}function toSelect(){G.phase='select';G.ok=[false,false];G.selT=0;snd('bell');}
+}function menuDo(a){
+  if(a===1){G.mode=1;toSelect();}
+  else if(a===2){G.mode=2;toSelect();}
+  else if(a===3){G.mode=3;G.sel=[GRID.includes(G.trainCh)?G.trainCh:GRID[0],0];G.phase='stage';G.stRow=0;G.selT=0;} // тренировка: сначала арена
+  else if(a===4){G.phase='net';NET.ui='';NET.msg='';}
+  else if(a===5){G.phase='keys';KS.tab=lastDev==='pad'?2:0;KS.row=0;KS.wait=false;KS.msg='';}
+}
+function toSelect(){G.phase='select';G.ok=[false,false];G.selT=0;snd('bell');}
 // ---------- обучение комбо (тренировка) ----------
 // Шаг комбо: серия ('p1,p1,k2'), спецприём ('@n' — нейтральный, '@d' — вниз, '@b' — назад) или захват / воздушная серия ('@g').
 // Спецприём и захват сразу после серии — отменой последнего удара. Комбо подобраны перебором и проверены ботом-исполнителем
@@ -1497,7 +1507,7 @@ function training(){
     const v=VTEST[G.vt=((G.vt===undefined?-1:G.vt)+1)%VTEST.length];
     samp(v[0],.9,1,v[1]);G.vtMsg=`голос ${G.vt+1}/${VTEST.length}: ${v[2]}`;G.vtT=frame+240;
   }
-  if(pressed.has('KeyJ')||(PAD[0].start&&PAD[0].sH)||(PAD[0].s&&PAD[0].startH)){ // тренировка ультры: болванчик сразу ошеломлён, дальше как в бою
+  if(pressed.has('KeyJ')||(PAD[0].start&&PAD[0].sH)||(PAD[0].s&&PAD[0].startH)){ // тренировка ультры: соперник сразу ошеломлён, дальше как в бою
     TUT.demo=false;startRound();G.log=[];const d=F[1];d.state='hit';d.dazeT=d.stateT=99;
     G.phase='ultra';G.t=0;G.ultra={w:F[0],d,run:false,n:0,t:0,train:true};snd('bell');return;
   }
@@ -1983,7 +1993,7 @@ function drawQTE(f){
 function drawTraining(){
   txt('ТРЕНИРОВКА',W/2,84,16,'#ffd24a');
   txt(`макс. комбо: ${F[0].maxCombo}`,52,116,15,'#ddd','left',true);
-  txt(`болванчик: ${['стоит','сидит','блок стоя','блок сидя'][G.dummy]}  [1 / 2 / 3 / 4]`,52,H-44,13,'#bbb','left',true);
+  txt(`соперник: ${['стоит','сидит','блок стоя','блок сидя'][G.dummy]}  [1 / 2 / 3 / 4]`,52,H-44,13,'#bbb','left',true);
   txt(G.log.join(' '),52,H-16,22,'#fff','left');
   if(F[0].breakT>0&&!TUT.demo)txt('СЕРИЯ СОРВАНА',52,H-86,20,'#ff5a4a','left');
   txt(`боец: ${F[0].ch.name}  [B · геймпад: бег + Options — сменить] · арена: N / блок + Options`,52,H-62,13,'#9fd8ff','left',true);
@@ -2005,25 +2015,93 @@ function drawTraining(){
     });
   }
 }
-function drawMenu(){
-  ctx.fillStyle='rgba(5,5,15,.62)';ctx.fillRect(0,0,W,H);
-  txt('НОЧНОЙ ТУРНИР',W/2,118,76,'#ffd24a');
-  txt('файтинг в баре',W/2,152,22,'#e8e8e8');
-  txt('[1] / ✕   Игрок против компьютера',W/2,196,24,'#fff');
-  txt('[2] / ○   Два игрока',W/2,226,24,'#fff');
-  txt('[3] / △   Тренировка',W/2,256,24,'#ffd24a');
-  txt('[4] / □   Игра по сети',W/2,286,24,'#7dff8a');
-  txt('[5] / Options   Управление',W/2,316,24,'#9fd8ff');
-  const y=376;
-  padInfo().forEach((t,i)=>txt('Геймпад: '+t,W/2,340+i*15,12,/игрок/.test(t)?'#7dff8a':'#bbb','center',true));
-  txt('ГЕЙМПАД:  '+padLine(),W/2,y+8,14,'#ffe08a','center',true);
-  txt('ИГРОК 1:  '+kbLine(0),W/2,y+34,13,'#9fd0ff','center',true);
-  txt('ИГРОК 2:  '+kbLine(1),W/2,y+60,13,'#ffb0a0','center',true);
-  txt('Рука 1 — джеб в голову · рука 2 — хук в корпус · нога 1 — в голову · нога 2 — в корпус · бег только вперёд',W/2,y+96,15,'#ddd','center',true);
-  txt('Присед + рука — апперкот · присед + нога — подсечка (блокируй сидя) · удар в прыжке пробивает блок сидя',W/2,y+120,15,'#ddd','center',true);
-  txt('Спецприём тратит синюю шкалу · Esc / Create — в меню · Options — подтвердить / реванш',W/2,y+144,15,'#ddd','center',true);
+// ---------- главное меню ----------
+// фон 1920×1080 рисуется на весь экран (k=0.5); поверх — живые детали: мерцание фонарей, пар из люка, огонь в бочке,
+// капли крови с логотипа, дождь и крыса, которая иногда перебегает улицу. Кнопки — готовые картинки (обычная / наведена / нажата).
+const MENU_BG=imgOf('assets/menu_bg.jpg'),RAT=sheet('assets/menu_rat.png',8,374,167,18,{});
+const MENU_BTN=[['player_vs_ai',1],['player_vs_player',2],['online',4],['training',3],['controls',5]].map(([id,act])=>
+  ({id,act,img:{n:imgOf(`assets/ui/${id}_normal.png`),h:imgOf(`assets/ui/${id}_hover.png`),a:imgOf(`assets/ui/${id}_active.png`)}}));
+const MB={x:30,y:150,w:370,h:53,step:64}; // кнопки на экране
+const MFX={steam:[],fire:[],drips:[],rain:[],rat:{x:0,dir:1,on:false,wait:120}};
+const MLAMP=[{x:690,y:214,r:170,c:'255,205,130',a:.22,b:.006},{x:597,y:498,r:80,c:'255,195,120',a:.2,b:.01},{x:547,y:290,r:70,c:'255,40,50',a:.25,b:.03}];
+const MDRIP=[[1183,598],[1236,580],[1300,602],[1588,612],[1652,600],[1268,742],[1300,728],[1560,724],[1540,806]];
+function drawMenuScene(){
+  const k=W/1920,F_=MFX,R=Math.random;
+  if(imgOk(MENU_BG))ctx.drawImage(MENU_BG,0,0,W,H);else{ctx.fillStyle='#0a0d14';ctx.fillRect(0,0,W,H);}
+  ctx.save();
+  // дождь
+  if(F_.rain.length<90)F_.rain.push({x:R()*W,y:-R()*H,v:9+R()*5});
+  ctx.strokeStyle='rgba(170,190,220,.22)';ctx.lineWidth=1;ctx.beginPath();
+  for(const d of F_.rain){d.y+=d.v;d.x-=d.v*.12;if(d.y>H){d.y=-10;d.x=R()*W*1.1;}ctx.moveTo(d.x,d.y);ctx.lineTo(d.x+1.6,d.y-11);}
+  ctx.stroke();
+  // фонари: дыхание света и редкие провалы
+  ctx.globalCompositeOperation='lighter';
+  MLAMP.forEach((l,i)=>{
+    if(l.off>0)l.off--;else if(R()<l.b)l.off=3+R()*10|0;
+    let v=.75+.15*Math.sin(frame*.07+i*2)+.1*Math.sin(frame*.37+i);
+    if(l.off>0)v*=l.off&2?.1:.45;
+    const x=l.x*k,y=l.y*k,r=l.r*k,g=ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,`rgba(${l.c},${l.a*v})`);g.addColorStop(1,`rgba(${l.c},0)`);ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2);
+  });
+  ctx.globalCompositeOperation='source-over';
+  MLAMP.forEach(l=>{if(l.off>0&&l.off&2){const x=l.x*k,y=l.y*k,r=l.r*k*.6,g=ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,'rgba(0,0,0,.35)');g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2);}});
+  // пар из люка
+  if(frame%4===0)F_.steam.push({x:(505+R()*40)*k,y:840*k,r:6+R()*6,a:.16,vx:.15+R()*.3,vy:-.5-R()*.4});
+  for(const s of F_.steam){s.x+=s.vx;s.y+=s.vy;s.r+=.28;s.a-=.0012;
+    const g=ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,s.r);g.addColorStop(0,`rgba(215,215,225,${Math.max(0,s.a)})`);g.addColorStop(1,'rgba(215,215,225,0)');
+    ctx.fillStyle=g;ctx.fillRect(s.x-s.r,s.y-s.r,s.r*2,s.r*2);}
+  F_.steam=F_.steam.filter(s=>s.a>0);
+  // огонь в бочке
+  ctx.globalCompositeOperation='lighter';
+  for(let n=0;n<3;n++)F_.fire.push({x:(1765+R()*110)*k,y:(698+R()*6)*k,r:5+R()*7,life:22+R()*18,t:0,vx:(R()-.5)*.4,vy:-.9-R()*1.1,spark:R()<.08});
+  for(const f of F_.fire){f.t++;f.x+=f.vx+Math.sin((f.t+f.x)*.3)*.25;f.y+=f.vy;
+    const q=1-f.t/f.life;if(q<=0)continue;
+    if(f.spark){ctx.fillStyle=`rgba(255,200,90,${q})`;ctx.fillRect(f.x,f.y-f.t*.8,2,2);continue;}
+    const r=f.r*(.4+q*.8),g=ctx.createRadialGradient(f.x,f.y,0,f.x,f.y,r);
+    g.addColorStop(0,`rgba(255,${190+40*q|0},90,${.55*q})`);g.addColorStop(.6,`rgba(255,${90+60*q|0},20,${.3*q})`);g.addColorStop(1,'rgba(200,40,0,0)');
+    ctx.fillStyle=g;ctx.fillRect(f.x-r,f.y-r,r*2,r*2);}
+  F_.fire=F_.fire.filter(f=>f.t<f.life);
+  {const fl=.6+.4*Math.sin(frame*.31)*Math.sin(frame*.13),x=1820*k,y=660*k,r=120*k,g=ctx.createRadialGradient(x,y,0,x,y,r); // отсвет огня
+    g.addColorStop(0,`rgba(255,140,40,${.12*fl})`);g.addColorStop(1,'rgba(255,140,40,0)');ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2);}
+  ctx.globalCompositeOperation='source-over';
+  // кровь капает с логотипа: капля набухает и срывается вниз
+  if(F_.drips.length<MDRIP.length&&R()<.03){const d=MDRIP[R()*MDRIP.length|0];if(!F_.drips.some(q=>q.src===d))F_.drips.push({src:d,x:d[0]*k,y:d[1]*k,t:0,grow:40+R()*40,vy:0});}
+  for(const d of F_.drips){
+    d.t++;let len=2+Math.min(1,d.t/d.grow)*4;
+    if(d.t>d.grow){d.vy+=.25;d.y+=d.vy;len=5+d.vy*.8;}
+    ctx.fillStyle='#8f0d18';ctx.beginPath();ctx.ellipse(d.x,d.y+len/2,1.8,len/2+1,0,0,7);ctx.fill();
+    ctx.fillStyle='rgba(255,90,90,.6)';ctx.fillRect(d.x-.6,d.y+1,1,1.4);
+  }
+  F_.drips=F_.drips.filter(d=>d.y<d.src[1]*k+90);
+  // крыса перебегает улицу
+  const rt=F_.rat;
+  if(!rt.on&&--rt.wait<=0){rt.on=true;rt.dir=R()<.5?1:-1;rt.x=rt.dir>0?-60:W+60;rt.y=470+R()*40;rt.v=4+R()*2;}
+  if(rt.on&&imgOk(RAT.img)){
+    rt.x+=rt.dir*rt.v;const fr=(frame*RAT.fps/60|0)%8,s=.27,w=RAT.cw*s,h=RAT.ch*s;
+    ctx.save();ctx.translate(rt.x,rt.y);ctx.scale(rt.dir,1);
+    ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(0,0,w*.32,3,0,0,7);ctx.fill();
+    ctx.drawImage(RAT.img,fr*RAT.cw,0,RAT.cw,RAT.ch,-w/2,-h+4,w,h);ctx.restore();
+    if(rt.x<-80||rt.x>W+80){rt.on=false;rt.wait=240+R()*400;}
+  }
+  ctx.restore();
 }
-// ---------- экран выбора бойца ----------
+function drawMenu(){
+  MENU_BTN.forEach((b,i)=>{
+    const sel=i===(G.mi||0),im=sel?(G.mGo>0?b.img.a:b.img.h):b.img.n,y=MB.y+i*MB.step,x=MB.x+(sel?8:0);
+    if(imgOk(im))ctx.drawImage(im,x,y,MB.w,MB.h);else{ctx.fillStyle='#222';ctx.fillRect(x,y,MB.w,MB.h);}
+  });
+  const pi=padInfo()[0];
+  txt('↑ ↓ — выбор · ✕ / Enter — выбрать · 1–5 — сразу · мышь тоже работает',MB.x+4,MB.y+MENU_BTN.length*MB.step+14,13,'#ccc','left',true);
+  txt('Геймпад: '+pi,MB.x+4,MB.y+MENU_BTN.length*MB.step+32,12,/игрок/.test(pi)?'#7dff8a':'#999','left',true);
+}
+// мышь в меню: наведение подсвечивает кнопку, клик — выбирает
+function menuHit(e){
+  const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width,y=(e.clientY-r.top)*H/r.height;
+  return MENU_BTN.findIndex((b,i)=>x>=MB.x&&x<=MB.x+MB.w&&y>=MB.y+i*MB.step&&y<=MB.y+i*MB.step+MB.h);
+}
+cv.addEventListener('mousemove',e=>{if(G.phase!=='menu'||G.mGo)return;const i=menuHit(e);if(i>=0&&i!==G.mi){G.mi=i;samp('ui_sel',.5,1,0);}});
+cv.addEventListener('click',e=>{if(G.phase!=='menu'||G.mGo)return;const i=menuHit(e);if(i>=0){G.mi=i;G.mClick=true;audioInit();}});// ---------- экран выбора бойца ----------
 // сетка 3×2 на картинке: номер бойца из CH в каждой рамке, -1 — боец ещё не готов (ЛамаГёрл)
 const GRID=[4,5,-2,-2,-2,-2]; // -2 — пустая рамка
 const SELBG=new Image();SELBG.src='assets/select_bg.jpg';
@@ -2117,6 +2195,7 @@ function drawSelect(){
 }
 function render(){
   ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+  if(G.phase==='menu'){drawMenuScene();drawMenu();return;}
   ctx.save();
   if(shake>.5){ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);shake*=.85;}
   const menu=G.phase==='menu'||G.phase==='select'||G.phase==='stage'||G.phase==='net'||G.phase==='keys',cx=Math.round(menu?(WW-W)/2+Math.sin(frame*.004)*(WW-W)/2:camX);
