@@ -1962,6 +1962,10 @@ function hud(){
 }
 function drawQTE(f){
   const g=f.gr,n=g.qte.length,bw=46,x0=clamp(f.x-camX-n*bw/2,20,W-20-n*bw),y=g.kind?Math.min(GY-70,f.y+34):GY-285; // у воздушной серии — под бойцами
+  if(G.mode!==3){ // в бою кнопки не подсказываются — только полоска времени
+    const k=clamp(g.qt/g.qmax,0,1),bx=clamp(f.x-camX-70,20,W-160);
+    ctx.fillStyle='#000';ctx.fillRect(bx,y+bw,140,8);ctx.fillStyle=k<.35?'#ff5a4a':'#4ad8ff';ctx.fillRect(bx+2,y+bw+2,136*k,4);return;
+  }
   txt(g.kind?`ЖМИ! каждая кнопка — удар · фаза ${g.n+1} из 2`:`ЖМИ! удар ${g.n+1} из 3`,x0+n*bw/2,y-12,18,'#ffd24a');
   for(let i=0;i<n;i++){
     const done=i<g.qi,cur=i===g.qi;
@@ -2161,9 +2165,9 @@ function render(){
     if(!U.run){
       const k=1-G.t/ULT_WIN;
       txt('ДОБЕЙ!',W/2,210,92,frame&8?'#ff3a3a':'#ffd24a');
-      txt(w.cpu?'ИИ готовит ультра комбо…':`${w.i?'ИГРОК 2':'ИГРОК 1'}: ${ctlLabel('s',NET.on?0:w.i)} — УЛЬТРА КОМБО, дальше кнопки по цепочке`,W/2,262,24,'#fff');
+      if(G.mode===3)txt(w.cpu?'ИИ готовит ультра комбо…':`${w.i?'ИГРОК 2':'ИГРОК 1'}: ${ctlLabel('s',NET.on?0:w.i)} — УЛЬТРА КОМБО, дальше кнопки по цепочке`,W/2,262,24,'#fff');
       ctx.fillStyle='#000';ctx.fillRect(W/2-160,282,320,12);ctx.fillStyle='#ff3a3a';ctx.fillRect(W/2-158,284,316*Math.max(0,k),8);
-      if(G.mode===3||!w.cpu){ // цепочка кнопок ультры — чтобы выучить заранее
+      if(G.mode===3){ // цепочка кнопок ультры — подсказка только в тренировке
         const seq=w.ch.ultraSeq||[];txt('цепочка ультры (повторяется по кругу):',W/2,326,16,'#ffd24a','center',true);
         ultraRow(w,0,seq.length,-1,336,44);
       }
@@ -2171,7 +2175,7 @@ function render(){
       ctx.fillStyle=`rgba(255,30,30,${G.uFlash>frame?.3:.06+.04*Math.sin(frame*.5)})`;ctx.fillRect(0,0,W,H);
       txt(`УЛЬТРА КОМБО  ${U.n} / ${ULT_N}`,W/2,130,52,frame&4?'#ffd24a':'#ff3a3a');
       // следующие кнопки цепочки: первая — сейчас
-      const seq=w.ch.ultraSeq||['p1','p2','k1','k2'],bw=52,cnt=7,y=150,x0=ultraRow(w,U.n,cnt,0,y,bw);
+      const seq=w.ch.ultraSeq||['p1','p2','k1','k2'],bw=52,cnt=7,y=150,x0=G.mode===3?ultraRow(w,U.n,cnt,0,y,bw):W/2-cnt*bw/2; // в бою кнопки не показываем
       if(G.mode===3){ // тренировка: вся цепочка, текущая кнопка подсвечена
         txt('вся цепочка:',W/2,236,14,'#ffd24a','center',true);
         ultraRow(w,0,seq.length,U.n%seq.length,244,36);
