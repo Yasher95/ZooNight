@@ -13,7 +13,8 @@ canvas{width:min(100vw,177.78vh);height:auto;display:block}
 <canvas id="c" width="960" height="540"></canvas>
 <script>
 'use strict';
-const W=960,H=540,GY=500; // GY — линия пола: середина зоны, размеченной на арене («игровая зона.png»)
+const W=960,H=540;
+let GY=500; // GY — линия пола: середина зоны, размеченной на арене (у каждой арены своя, см. ARENAS)
 // WW — ширина арены (мир шире экрана); camX — левый край экрана в мире. Бойцы не расходятся дальше экрана.
 const WW=1634,SPAN=W-90;
 // AL..AR — где можно стоять: левее и правее пол уходит под стену, столы и бочки (картинка шире игровой зоны)
@@ -144,7 +145,7 @@ function ctlLabel(a,i=0){
   return pn(PADMAP[t][a],t);
 }
 const KS={tab:0,row:0,wait:false,msg:'',held:new Set()};
-const KRES=['Escape','Enter','Tab','Backspace','Delete','KeyM','KeyV','KeyC','KeyX','KeyB','Digit1','Digit2','Digit3','Digit4'];
+const KRES=['Escape','Enter','Tab','Backspace','Delete','KeyM','KeyV','KeyC','KeyX','KeyB','KeyN','Digit1','Digit2','Digit3','Digit4'];
 addEventListener('keydown',e=>{
   if(G.phase!=='keys'||!KS.wait||KS.tab>1)return;
   e.preventDefault();pressed.delete(e.code);
@@ -244,14 +245,17 @@ function audioInit(){
 const MUSIC=new Audio('assets/audio/music_bar.mp3');MUSIC.loop=true;MUSIC.volume=.28;
 const MUSIC_SEL=new Audio('assets/audio/music_select.mp3');MUSIC_SEL.loop=true;MUSIC_SEL.volume=.32;
 const MUSIC_MENU=new Audio('assets/audio/music_menu.mp3');MUSIC_MENU.loop=true;MUSIC_MENU.volume=.32;
+// больница: если файла музыки нет, играет музыка бара
+const MUSIC_HOSP=new Audio('assets/audio/music_hospital.mp3');MUSIC_HOSP.loop=true;MUSIC_HOSP.volume=.3;MUSIC_HOSP.onerror=()=>{MUSIC_HOSP.bad=true;};
 let musicOff=false;
 // в меню, на экране выбора бойца и в бою — своя музыка
 function musicSync(){
   if(!ac)return;
-  const on=G.phase==='select'?MUSIC_SEL:G.phase==='menu'||G.phase==='net'||G.phase==='keys'?MUSIC_MENU:MUSIC;
-  for(const m of[MUSIC,MUSIC_SEL,MUSIC_MENU])if(m!==on&&!m.paused)m.pause();
+  const am=(ARENAS[G.arena||0].music)||MUSIC,fm=am.bad?MUSIC:am;
+  const on=G.phase==='select'||G.phase==='stage'?MUSIC_SEL:G.phase==='menu'||G.phase==='net'||G.phase==='keys'?MUSIC_MENU:fm;
+  for(const m of[MUSIC,MUSIC_SEL,MUSIC_MENU,MUSIC_HOSP])if(m!==on&&!m.paused)m.pause();
   if(musicOff){if(!on.paused)on.pause();}
-  else if(on.paused){if(on!==MUSIC)on.currentTime=0;on.play().catch(()=>{});}
+  else if(on.paused){if(on===MUSIC_SEL||on===MUSIC_MENU)on.currentTime=0;on.play().catch(()=>{});}
 }
 // сэмплы: в каждом файле несколько звуков подряд — играется кусок [файл, начало, конец] в секундах.
 // v_* — голос HorseMan: atk — удар, sp — спецприём, hurt — получил удар, ko — нокаут, win — победа
@@ -580,6 +584,7 @@ function mkF(i,chi,cpu){
     seq:'',contactAt:-1,jug:0,comboDmg:0,maxCombo:0,usedSp:[],locked:false,keepBuf:false,breakT:0};
 }
 function startMatch(){
+  GY=arena().gy;
   F=[mkF(0,G.sel[0],false),mkF(1,G.sel[1],G.mode===1)];
   if(G.mode===3){F[1].ch=DUMMY;F[1].dummy=true;G.dummy=0;G.log=[];G.list=true;TUT.i=-1;TUT.demo=false;TUT.ps=0;}
   if(G.mode===1)F[1].ai.skill=DIFF[G.diff][1];
@@ -1254,7 +1259,7 @@ function tick(net){
   }
   if(G.phase==='net'){netMenu();return;}
   if(G.phase==='keys'){keysMenu();return;}
-  if(!net&&(pressed.has('Escape')||PAD[0].back||PAD[1].back)){G.phase='menu';return;}
+  if(!net&&(pressed.has('Escape')||PAD[0].back||PAD[1].back)){if(G.phase==='stage')toSelect();else G.phase='menu';return;}
   if(G.phase==='select'){
     for(let i=0;i<2;i++){
       if(i===1&&G.mode===1)continue;
@@ -1265,13 +1270,19 @@ function tick(net){
         if(n.p1||n.p2||n.k1||n.k2||PAD[i].start||(!net&&i===0&&pressed.has('Enter'))){G.ok[i]=true;snd('bell');}
       }
     }
-    if(G.mode===1&&!G.ok[0]){
-      const b=(IN[0].blk?1:0)-(IN[0].run?1:0); // сложность — кнопками блока и бега (стрелки заняты сеткой)
-      if(b&&!G.dPrev){G.diff=(G.diff+b+DIFF.length)%DIFF.length;samp('ui_sel',.6,1.2,0);}
-      G.dPrev=b;
-    }
     if(G.mode===1&&G.ok[0]&&!G.ok[1]){G.sel[1]=GRID[Math.random()*2|0];G.ok[1]=true;samp('ui_sel',.8,1,0);}
-    if(G.ok[0]&&G.ok[1]&&++G.selT>40)startMatch();
+    if(G.ok[0]&&G.ok[1]&&++G.selT>40){G.phase='stage';G.stRow=0;G.selT=0;}
+    return;
+  }
+  if(G.phase==='stage'){ // арена и сложность ИИ; выбирает игрок 1
+    const k=c=>!net&&pressed.has(c),n0=IN[0],rows=G.mode===1?2:1; // стрелки тоже работают (кроме игры по сети)
+    const n={uE:n0.uE||k('ArrowUp'),dE:n0.dE||k('ArrowDown'),lE:n0.lE||k('ArrowLeft'),rE:n0.rE||k('ArrowRight'),p1:n0.p1,p2:n0.p2,k1:n0.k1,k2:n0.k2};
+    if(G.selT++<10)return;
+    if(n.uE||n.dE){G.stRow=(G.stRow+1)%rows;samp('ui_sel',.6,1.1,0);}
+    const dx=(n.rE?1:0)-(n.lE?1:0);
+    if(dx&&G.stRow===0){G.arena=((G.arena||0)+dx+ARENAS.length)%ARENAS.length;samp('ui_sel',.8,1,0);}
+    if(dx&&G.stRow===1){G.diff=clamp(G.diff+dx,0,DIFF.length-1);samp('ui_sel',.6,1.2,0);}
+    if(n.p1||n.p2||n.k1||n.k2||PAD[0].start||(!net&&pressed.has('Enter'))){snd('bell');startMatch();}
     return;
   }
   G.t++;
@@ -1474,6 +1485,7 @@ function training(){
     const v=VTEST[G.vt=((G.vt===undefined?-1:G.vt)+1)%VTEST.length];
     samp(v[0],.9,1,v[1]);G.vtMsg=`голос ${G.vt+1}/${VTEST.length}: ${v[2]}`;G.vtT=frame+240;
   }
+  if(pressed.has('KeyN')){G.arena=((G.arena||0)+1)%ARENAS.length;const ls=G.list;startMatch();G.list=ls;snd('bell');return;} // смена арены
   if(pressed.has('KeyB')||(PAD[0].start&&PAD[0].run)){ // смена бойца: по кругу среди доступных
     const pl=GRID.filter(c=>c>=0);G.sel[0]=G.trainCh=pl[(pl.indexOf(G.sel[0])+1)%pl.length];
     const ls=G.list;startMatch();G.list=ls;snd('bell');return;
@@ -1733,8 +1745,14 @@ const bg=document.createElement('canvas');bg.width=W;bg.height=H;
 })();
 
 // арена-бар: картинка шире экрана, рисуется в координатах мира. Пока не загрузилась — старый фон крыши.
-const ARENA=new Image();ARENA.src='assets/arena_bar.jpg';
-const ARENA_FG=new Image();ARENA_FG.src='assets/arena_bar_fg.png'; // ящик и бочка справа — рисуются поверх бойцов
+// арены: картинка 3584×1184 растягивается на мир WW×H; fgr — где лежит передний план (в пикселях картинки), gy — линия пола
+// (середина зелёной зоны разметки, в пикселях картинки); края зоны для ходьбы у обеих арен совпадают (AL..AR)
+const imgOf=s=>{const i=new Image();i.src=s;return i;};
+const ARENAS=[
+  {name:'БАР',img:imgOf('assets/arena_bar.jpg'),fg:imgOf('assets/arena_bar_fg.png'),fgr:[3041,919,338,265],gy:500,lights:true,music:MUSIC},  // ящик и бочка справа
+  {name:'БОЛЬНИЦА',img:imgOf('assets/arena_hospital.jpg'),fg:imgOf('assets/arena_hospital_fg.png'),fgr:[1044,1036,612,146],gy:Math.round(1116*540/1184),music:MUSIC_HOSP} // каталка внизу
+];
+const arena=()=>ARENAS[G.arena||0];
 // источники света (координаты по картинке шириной 2000): лампы, неон, автомат, окно. b — как часто мигает
 const LIGHTS=[
   {x:597, y:285,r:190,c:'255,214,140',a:.34,b:.004,cone:1},
@@ -1747,8 +1765,10 @@ const LIGHTS=[
   {x:215, y:350,r:110,c:'255,205,130',a:.22,b:.003}
 ];
 function drawArena(){
-  if(!(ARENA.complete&&ARENA.naturalWidth)){ctx.drawImage(bg,0,0);ctx.drawImage(bg,W,0);return;}
-  ctx.drawImage(ARENA,0,0,WW,H);
+  const A=arena();
+  if(!imgOk(A.img)){ctx.drawImage(bg,0,0);ctx.drawImage(bg,W,0);return;}
+  ctx.drawImage(A.img,0,0,WW,H);
+  if(!A.lights)return;
   const k=WW/2000;
   ctx.save();ctx.globalCompositeOperation='lighter';
   LIGHTS.forEach((l,i)=>{
@@ -1949,7 +1969,7 @@ function drawTraining(){
   txt(`болванчик: ${['стоит','сидит','блок стоя','блок сидя'][G.dummy]}  [1 / 2 / 3 / 4]`,52,H-44,13,'#bbb','left',true);
   txt(G.log.join(' '),52,H-16,22,'#fff','left');
   if(F[0].breakT>0&&!TUT.demo)txt('СЕРИЯ СОРВАНА',52,H-86,20,'#ff5a4a','left');
-  txt(`боец: ${F[0].ch.name}  [B · геймпад: бег + Options — сменить]`,52,H-62,13,'#9fd8ff','left',true);
+  txt(`боец: ${F[0].ch.name}  [B · геймпад: бег + Options — сменить] · арена: N`,52,H-62,13,'#9fd8ff','left',true);
   drawTutor();
   txt('Backspace / Options — сброс · Tab / тачпад — список · C / R3 — комбо · V — прослушать голос · M — музыка · Esc / Create — меню',W-20,H-10,12,'#999','right',true);
   if(G.vtT>frame)txt(G.vtMsg,W/2,112,16,'#9fd8ff','center',true);
@@ -1990,7 +2010,7 @@ const GRID=[4,5,-2,-2,-2,-2]; // -2 — пустая рамка
 const SELBG=new Image();SELBG.src='assets/select_bg.jpg';
 const SELP={'4':new Image(),'5':new Image()};SELP['4'].src='assets/select_horse.png';SELP['5'].src='assets/select_lama.png';
 const SLOT=s=>({x:277+(s%3)*139.5,y:105.5+(s/3|0)*174.4,w:127,h:158});
-const imgOk=im=>im&&im.complete&&im.naturalWidth>0;
+function imgOk(im){return!!im&&im.complete&&im.naturalWidth>0;}
 // шаг курсора по сетке; пустые рамки перескакиваются
 function selMove(ci,dx,dy){
   const s=GRID.indexOf(ci);let c=s%3,r=s/3|0;
@@ -2001,11 +2021,36 @@ function selMove(ci,dx,dy){
   return ci;
 }
 const SELF=[{},{}];
+function drawStage(){
+  ctx.fillStyle='rgba(5,5,15,.7)';ctx.fillRect(0,0,W,H);
+  txt('ВЫБОР АРЕНЫ',W/2,64,44,'#ffd24a');
+  const cw=400,ch=132,gap=40,x0=W/2-(ARENAS.length*cw+(ARENAS.length-1)*gap)/2,y=104;
+  ARENAS.forEach((a,i)=>{
+    const x=x0+i*(cw+gap),sel=i===(G.arena||0);
+    if(imgOk(a.img))ctx.drawImage(a.img,x,y,cw,ch);else{ctx.fillStyle='#222';ctx.fillRect(x,y,cw,ch);}
+    if(!sel){ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(x,y,cw,ch);}
+    ctx.save();ctx.strokeStyle=sel?'#ffd24a':'#555';ctx.lineWidth=sel?5:2;
+    if(sel&&G.stRow===0){ctx.shadowColor='#ffd24a';ctx.shadowBlur=18;}
+    ctx.strokeRect(x,y,cw,ch);ctx.restore();
+    txt(a.name,x+cw/2,y+ch+30,26,sel?'#fff':'#999');
+  });
+  if(G.mode===1){
+    const y2=360,bw=170;
+    txt('СЛОЖНОСТЬ ИИ',W/2,y2-20,22,G.stRow===1?'#ffd24a':'#bbb');
+    DIFF.forEach((d,i)=>{
+      const x=W/2-DIFF.length*bw/2+i*bw,sel=i===G.diff;
+      ctx.fillStyle=sel?(G.stRow===1?'rgba(255,210,74,.95)':'rgba(255,210,74,.55)'):'rgba(0,0,0,.6)';ctx.fillRect(x+6,y2,bw-12,40);
+      ctx.strokeStyle=sel?'#fff':'#555';ctx.lineWidth=sel?3:1.5;ctx.strokeRect(x+6,y2,bw-12,40);
+      txt(d[0],x+bw/2,y2+28,20,sel?'#000':'#ddd');
+    });
+  }
+  txt(`← → — выбор${G.mode===1?' · ↑ ↓ — арена / сложность':''} · любая кнопка удара — в бой · Esc / Create — назад`,W/2,H-20,14,'#bbb','center',true);
+}
 function drawSelect(){
   if(imgOk(SELBG))ctx.drawImage(SELBG,0,0,W,H);else{ctx.fillStyle='#0a0d14';ctx.fillRect(0,0,W,H);}
   txt('ВЫБОР БОЙЦА',W/2,60,44,'#ffd24a');
   if(NET.on)txt('Игра по сети · ты — '+(NET.me?'P2 (красная рамка)':'P1 (синяя рамка)'),W/2,88,16,'#7dff8a','center',true);
-  else if(G.mode===1)txt(`Сложность ИИ:  ${DIFF[G.diff][0]}   (${ctlLabel('run')} — легче · ${ctlLabel('blk')} — сложнее)`,W/2,88,16,'#ffd24a','center',true);
+  else if(G.mode===1)txt('Против компьютера · сложность — на следующем экране',W/2,88,16,'#ffd24a','center',true);
   for(let s=0;s<6;s++){
     const{x,y,w,h}=SLOT(s),ci=GRID[s],im=SELP[ci];
     if(imgOk(im))ctx.drawImage(im,x,y,w,h);
@@ -2043,10 +2088,10 @@ function render(){
   ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
   ctx.save();
   if(shake>.5){ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);shake*=.85;}
-  const menu=G.phase==='menu'||G.phase==='select'||G.phase==='net'||G.phase==='keys',cx=Math.round(menu?(WW-W)/2+Math.sin(frame*.004)*(WW-W)/2:camX);
+  const menu=G.phase==='menu'||G.phase==='select'||G.phase==='stage'||G.phase==='net'||G.phase==='keys',cx=Math.round(menu?(WW-W)/2+Math.sin(frame*.004)*(WW-W)/2:camX);
   ctx.save();ctx.translate(-cx,0);
   drawArena();
-  if(menu){ctx.restore();if(G.phase==='menu')drawMenu();else if(G.phase==='net')drawNet();else if(G.phase==='keys')drawKeys();else drawSelect();ctx.restore();return;}
+  if(menu){ctx.restore();if(G.phase==='menu')drawMenu();else if(G.phase==='net')drawNet();else if(G.phase==='keys')drawKeys();else if(G.phase==='stage')drawStage();else drawSelect();ctx.restore();return;}
   for(const p of parts)if(p.st){ctx.globalAlpha=clamp(p.life/70,0,.85);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.size*1.3,p.y-p.size*.3,p.size*2.6,p.size*.6);}
   ctx.globalAlpha=1;
   for(const f of F){
@@ -2078,7 +2123,7 @@ function render(){
     else{ctx.globalAlpha=clamp(p.life/14,0,1);ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);}
   }
   ctx.globalAlpha=1;
-  if(ARENA_FG.complete&&ARENA_FG.naturalWidth)ctx.drawImage(ARENA_FG,3041*WW/3584,919*H/1184,338*WW/3584,265*H/1184); // передний план перекрывает бойцов
+  {const A=arena(),r=A.fgr;if(imgOk(A.fg))ctx.drawImage(A.fg,r[0]*WW/3584,r[1]*H/1184,r[2]*WW/3584,r[3]*H/1184);} // передний план перекрывает бойцов
   ctx.restore();
   hud();
   if(NET.on)drawNetHud();
