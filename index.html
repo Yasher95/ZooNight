@@ -786,7 +786,7 @@ function resolvePending(){
 // ---------- бросок (L2 по стоящему): пробивает блок, проигрывает удару и прыжку, из него можно выйти ----------
 // DMG — общий множитель урона: меньше урона за касание = больше разменов за раунд = результат зависит от игры, а не от одного попадания
 const TECH_WIN=10,BREAK_COST=50,DMG=.72;
-const DIFF=[['ЛЁГКИЙ',.35],['СРЕДНИЙ',.6],['СЛОЖНЫЙ',.8],['МАСТЕР',.95]];
+const DIFF=[['ЛЁГКИЙ',.12],['СРЕДНИЙ',.6],['СЛОЖНЫЙ',.8],['МАСТЕР',.95]];
 function throwable(o){return o.y>=GY&&!o.tInv&&['idle','walk','crouch','block','attack'].includes(o.state);}
 function startThrow(a,d){
   a.state='throw';a.thT=0;a.vx=0;a.buf=newBuf();
@@ -1340,6 +1340,8 @@ function aiInput(f,o){
   if(f.state==='bstun'||ai.bt>0){ai.bt--;return Object.assign(inp,ai.lastDef||{blk:1});}
   if(ai.t>0){ai.t--;return Object.assign(inp,ai.hold||{});}
   ai.hold={};
+  // слабый бот (лёгкий уровень) часто медлит: стоит или пятится, давая время на ход
+  if(sk<.5&&R()<(.5-sk)*1.1){ai.hold=R()<.6?{}:{[bk]:1};ai.t=12+(R()*22|0);return Object.assign(inp,ai.hold);}
   // джаггл: добежать и начать серию
   if(o.state==='hit'&&o.dazeT>0&&o.y>=GY){
     if(dist>95){inp[fw]=1;inp.run=1;return inp;}
@@ -1382,7 +1384,7 @@ function aiInput(f,o){
   }
   const oBlk=o.state==='block'||o.state==='bstun';
   if(oBlk&&o.crouching&&R()<.12+.2*sk){inp[bk]=1;inp.p2=1;ai.plan=null;ai.t=2;return inp;} // оверхед по сидящему в блоке
-  if(r<(oBlk?.35:.1)){inp.s=1;inp.g=1;ai.t=4;return inp;} // бросок, особенно против блока
+  if(r<(oBlk?.35:.1)*(sk<.3?.35:1)){inp.s=1;inp.g=1;ai.t=4;return inp;} // бросок, особенно против блока
   if(r<.78){ai.plan=pick(f.ch.ai||AI_STR);inp[ai.plan[0]]=1;ai.t=2;return inp;}
   if(r<.88){ai.hold={blk:1};ai.t=8+(R()*10|0);}
   else{ai.hold={[bk]:1,run:R()<.5?1:0};ai.t=8+(R()*8|0);} // отход или отскок
