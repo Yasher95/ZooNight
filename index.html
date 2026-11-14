@@ -733,6 +733,8 @@ function feed(f,inp){
       if(!m.special){
         const pending=BK.some(k=>f.buf[k]>0);
         const closed=f.at>(f.contactAt>=0?f.contactAt:m.su+m.ac)+CANCEL_WIN; // мимо — окно открывается после активных кадров
+        // захват (L2) после попадания, но позже окна отмены — не срывает серию, а ждёт конца удара (воздушная серия / хватка)
+        if(closed&&b==='s'&&f.sDir==='g'&&f.contactAt>=0){f.buf=newBuf();f.buf.s=total-f.at+6;f.keepBuf=true;continue;}
         const ok=b==='s'||!!strOf(f)[f.seq+','+b];
         if(pending||closed||!ok)breakString(f);
       }
