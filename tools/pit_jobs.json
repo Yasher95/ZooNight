@@ -1,0 +1,247 @@
+{
+    "out":  "Y:\\priem_na_rabotu_v_gaymdev_2500$\\Fighter2D\\assets",
+    "overview":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\cutp",
+    "jobs":  [
+                 {
+                     "name":  "pit_idle",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\айдл.png",
+                     "frames":  6,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f0"
+                 },
+                 {
+                     "name":  "pit_walk",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\ходьба.png",
+                     "frames":  6,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f0",
+                     "anchor":  "box"
+                 },
+                 {
+                     "name":  "pit_run",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\бег.png",
+                     "frames":  6,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  545,
+                     "anchor":  "box"
+                 },
+                 {
+                     "name":  "pit_block",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\блок.png",
+                     "frames":  6,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f0"
+                 },
+                 {
+                     "name":  "pit_cblock",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\вкл блок сидя.png",
+                     "frames":  6,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f0"
+                 },
+                 {
+                     "name":  "pit_crouch",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\переход положения сидя.png",
+                     "frames":  6,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f0"
+                 },
+                 {
+                     "name":  "pit_juggle",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\воздушное жонглирование.png",
+                     "frames":  6,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  545,
+                     "anchor":  "box"
+                 },
+                 {
+                     "name":  "pit_fall",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\падение.png",
+                     "frames":  5,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  545,
+                     "anchor":  "box"
+                 },
+                 {
+                     "name":  "pit_win",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\победная стойка.png",
+                     "frames":  5,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  545
+                 },
+                 {
+                     "name":  "pit_chit",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\получение урона сидя.png",
+                     "frames":  4,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  697
+                 },
+                 {
+                     "name":  "pit_hit_high",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\получение урона стоя.png",
+                     "frames":  3,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  545
+                 },
+                 {
+                     "name":  "pit_hit_mid",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\получение урона центр.png",
+                     "frames":  5,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  545
+                 },
+                 {
+                     "name":  "pit_jump",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\прыжок.png",
+                     "frames":  6,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  545
+                 },
+                 {
+                     "name":  "pit_upper",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\аппекот.png",
+                     "frames":  6,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f0"
+                 },
+                 {
+                     "name":  "pit_throw",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\бросок + добивание.png",
+                     "frames":  5,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f-1"
+                 },
+                 {
+                     "name":  "pit_jab",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\джеб и кросс.png",
+                     "frames":  5,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f0"
+                 },
+                 {
+                     "name":  "pit_bite",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\кусание.png",
+                     "frames":  6,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  545
+                 },
+                 {
+                     "name":  "pit_hammer",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\молот.png",
+                     "frames":  3,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  545,
+                     "anchor":  "box"
+                 },
+                 {
+                     "name":  "pit_sweep",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\подсечка.png",
+                     "frames":  5,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f0"
+                 },
+                 {
+                     "name":  "pit_roar",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\рык.png",
+                     "frames":  5,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f0"
+                 },
+                 {
+                     "name":  "pit_headbutt",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\удар головой.png",
+                     "frames":  5,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f-1"
+                 },
+                 {
+                     "name":  "pit_knee",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\удар коленом.png",
+                     "frames":  5,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f0",
+                     "baseline":  true
+                 },
+                 {
+                     "name":  "pit_kick",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\удар ногами.png",
+                     "frames":  5,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f0"
+                 },
+                 {
+                     "name":  "pit_punch",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\удар рукой.png",
+                     "frames":  6,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f0"
+                 },
+                 {
+                     "name":  "pit_spin",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\удар с розворота.png",
+                     "frames":  5,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  "f-1"
+                 },
+                 {
+                     "name":  "pit_charge",
+                     "src":  "C:\\Users\\Yasher\\AppData\\Local\\Temp\\claude\\5855420df3f1c578\\df3a0ac0-8a30-4901-b3c3-7053d4e492c0\\scratchpad\\pit_src\\четвереньки.png",
+                     "frames":  6,
+                     "shed":  true,
+                     "valley":  true,
+                     "erode":  1,
+                     "stand":  480,
+                     "baseline":  true
+                 }
+             ]
+}
