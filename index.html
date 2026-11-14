@@ -229,6 +229,10 @@ function moveList(ch){
   rows.push(
     `${l('g')} вблизи — бросок (выход — ${l('g')})`,
     `${l('run')} + назад — отскок`);
+  if(ch.ultraSeq){ // ультра комбо
+    rows.push('','УЛЬТРА — на решающем нокауте («ДОБЕЙ!»):',`  ${l('s')}, затем кнопки по кругу (до 60 ударов):`,'  '+ch.ultraSeq.map(x=>l(x)).join(' '),
+      '  ошибка / пауза — конец · в тренировке: J / Options+R2');
+  }
   rows.adv=adv;
   return rows;
 }
@@ -1984,14 +1988,15 @@ function drawTraining(){
   if(G.vtT>frame)txt(G.vtMsg,W/2,112,16,'#9fd8ff','center',true);
   if(G.list){
     const ML=moveList(F[0].ch);
-    ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(W-322,96,312,ML.length*16+12);
+    const st=Math.min(16,(H-128)/ML.length),fs=Math.min(12,st*.78); // длинный список сжимается, чтобы влез в экран
+    ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(W-322,96,312,ML.length*st+12);
     ML.forEach((s,i)=>{
       if(!s)return;
-      const y=113+i*16;
-      txt(s,W-314,y,12,i<4?'#9fd8ff':/[↑↓→]/.test(s)?'#ffe08a':'#eee','left',true);
+      const y=113+i*st;
+      txt(s,W-314,y,fs,i<4?'#9fd8ff':/[↑↓→]/.test(s)?'#ffe08a':'#eee','left',true);
       // преимущество в блоке: зелёный — плюс, красный — открыт для ответа
       let x=W-16;
-      for(const a of(ML.adv[i]||[]).slice().reverse()){const v=advTxt(a);txt(v,x,y,12,advCol(a),'right',true);x-=ctx.measureText(v).width+7;}
+      for(const a of(ML.adv[i]||[]).slice().reverse()){const v=advTxt(a);txt(v,x,y,fs,advCol(a),'right',true);x-=ctx.measureText(v).width+7;}
     });
   }
 }
