@@ -821,7 +821,8 @@ function doThrow(a,d){
 // ---------- воздушная серия ЛамаГёрл ----------
 // Вместо захвата коня: лама взлетает к подброшенному противнику и бьёт его в воздухе. Каждая верная кнопка QTE — сразу удар;
 // две фазы (3 и 5 кнопок), после второй — добивание двумя руками об пол с высоким отскоком. Ошибка или опоздание — оба падают.
-const RV={seq:[['k2','p1','k1'],['k2','k2','p1','k1','p2']],qt:[65,90],dmg:2.6,first:4,fin:9,an:{p1:'rv_p1',p2:'rv_p2',k1:'rv_k1',k2:'rv_k2'}};
+// qt — время на каждую кнопку (кадры): после верного нажатия таймер заполняется заново
+const RV={seq:[['k2','p1','k1'],['k2','k2','p1','k1','p2']],qt:[55,55],dmg:2.6,first:4,fin:9,an:{p1:'rv_p1',p2:'rv_p2',k1:'rv_k1',k2:'rv_k2'}};
 function startRave(a,d){
   if(d.state!=='hit'){a.combo=0;a.comboDmg=0;a.usedSp=[];d.jug=0;d.usedWB=d.usedGB=false;}
   a.usedSp.push('grab');d.jug++;
@@ -885,7 +886,7 @@ function ravePress(a,d,inp){
   for(const b of BTN){
     if(!inp[b])continue;
     if(b!==g.qte[g.qi]){endRave(a,d,false);return;}
-    g.qi++;g.akey=RV.an[b];g.h=Math.min(215,g.h+6);
+    g.qi++;g.akey=RV.an[b];g.h=Math.min(215,g.h+6);g.qt=g.qmax;
     if(!raveHit(a,d,RV.dmg))return;
     if(g.qi>=g.qte.length){g.t=0;if(g.n===0)g.phase='gap';else{g.phase='fin';g.akey='rv_fin';}return;}
   }
@@ -1398,9 +1399,9 @@ function world(live){
   if(hitstop>0){
     hitstop--;
     // нажатия во время стоп-кадра не теряются
-    if(live)F.forEach((f,i)=>{if(!f.cpu&&!f.dummy&&!(TUT.demo&&i===0&&G.mode===3)){feed(f,IN[i]);qtePress(f,F[1-i],IN[i]);}});
+    if(live)F.forEach((f,i)=>{if(!f.cpu&&!f.dummy&&!(TUT.demo&&i===0&&G.mode>=3)){feed(f,IN[i]);qtePress(f,F[1-i],IN[i]);}});
   }else{
-    const ins=F.map((f,i)=>!live?EMPTY:TUT.demo&&i===0&&G.mode===3?tutorInput(f,F[1]):f.dummy?DUMMY_IN[G.dummy||0]:f.cpu?aiInput(f,F[1-i]):IN[i]);
+    const ins=F.map((f,i)=>!live?EMPTY:TUT.demo&&i===0&&G.mode>=3?tutorInput(f,F[1]):f.dummy?DUMMY_IN[G.dummy||0]:f.cpu?aiInput(f,F[1-i]):IN[i]);
     const k=frame&1; // порядок хода чередуется каждый кадр — ни у одной стороны нет преимущества
     updF(F[k],F[1-k],ins[k]);updF(F[1-k],F[k],ins[1-k]);
     resolvePending();
@@ -1446,8 +1447,12 @@ function tick(net){
   const padStart=!!(PAD[0].start||PAD[1].start);
   if(VID.el&&G.phase!=='end')vidStop(); // ушли с экрана победы (реванш, меню) — ролик стоп
   if(!net)musicKey();
+  if(G.mode===4&&!net){ // демо: любая кнопка — назад в меню
+    if(demoAny()){G.mode=1;G.phase='menu';G.mIdle=0;G.mGo=0;G.demoExit=false;TUT.demo=false;pressed.clear();return;}
+  }
   if(G.phase==='menu'){
     if(G.mGo>0){if(--G.mGo===0)menuDo(MENU_BTN[G.mi].act);return;} // кнопка «нажата» — пауза, потом переход
+    if(demoAny())G.mIdle=0;else if(++G.mIdle>600&&!net){demoStart();return;} // 10 с без нажатий — демо
     const n=IN[0],p=PAD[0],k=c=>pressed.has(c);
     G.mi=G.mi||0;
     if(n.uE||k('ArrowUp')){G.mi=(G.mi+MENU_BTN.length-1)%MENU_BTN.length;samp('ui_sel',.6,1,0);}
@@ -1485,6 +1490,7 @@ function tick(net){
     return;
   }
   G.t++;
+  if(G.mode===4&&demoTick())return;
   if(G.phase==='intro'){
     world(false);
     if(G.t>=70){G.phase='fight';G.t=0;snd('bell');}
@@ -1503,7 +1509,7 @@ function tick(net){
     world(false);
     const w=G.winner;
     if(G.mode===3){if(G.t>130)startRound();return;} // тренировка ультры — сразу снова в тренировку
-    const fin=w&&w.wins>=2; // матч решён — вместо победной стойки ролик
+    const fin=w&&w.wins>=2&&G.mode!==4; // матч решён — вместо победной стойки ролик
     if(fin){if(G.t>70){G.phase='end';G.t=0;vidStart(w.ch);}return;}
     if(G.t>60&&w&&w.y>=GY&&FREE.includes(w.state)){w.state='win';voice(w,'v_win');}
     if(G.t>200){
@@ -1541,7 +1547,7 @@ function ultraTick(){
     d.hp=0;
     if(d.y>=GY&&d.state!=='hit'){d.state='hit';d.launched=false;d.vy=0;}
     if(d.state==='hit'){d.stateT=99;if(d.y>=GY)d.dazeT=99;}
-    const press=w.cpu?G.t===40:!!IN[w.i].s;
+    const press=w.cpu?G.t>=40:!!IN[w.i].s;
     if(press&&w.y>=GY&&!['grab','throw','hit','ko'].includes(w.state)){
       U.run=true;U.t=0;U.n=0;U.last=-14;U.q=null;U.miss=false;
       w.state='ultra';w.vx=0;w.facing=d.x>=w.x?1:-1;w.combo=0;w.comboDmg=0;w.uKey=null;w.gr=null;
@@ -1576,7 +1582,46 @@ function ultraTick(){
     if(!w.cpu)rumble(w.i,U.n%10===0);
     if(U.n>=ULT_N){w.uKey=w.ch.ultraFin||w.uKey;w.uT0=frame;finishUltra(U,true);}
   }else if(U.t-U.last>ultT(U.n)){w.uKey=w.ch.ultraFin||w.uKey;w.uT0=frame;finishUltra(U,true);} // не успел — добивание
-}function menuDo(a){
+}
+// ---------- демо ----------
+// 10 с без нажатий в меню — показ: бойцы ИИ (мастер) друг против друга, самые длинные комбо (бот-исполнитель из обучения)
+// и добивание ультра комбо. Арена и бойцы случайные. Любая кнопка или клик — назад в меню.
+const DEMO={n:0,t:0,kind:'',cap:'',endT:0};
+function demoAny(){
+  return pressed.size>0||!!G.mClick||!!G.demoExit||[IN[0],IN[1],PAD[0],PAD[1]].some(o=>o&&Object.values(o).some(v=>v===true));
+}
+function demoStart(){G.mode=4;G.mIdle=0;DEMO.n=Math.random()*3|0;demoNext();}
+function demoNext(){
+  const pl=GRID.filter(c=>c>=0),pick=a=>a[Math.random()*a.length|0];
+  const kind=['combo','ultra','fight'][DEMO.n++%3];
+  G.arena=Math.random()*ARENAS.length|0;
+  const a=pick(pl);let b=pick(pl);if(b===a&&pl.length>1&&Math.random()<.7)b=pick(pl.filter(c=>c!==a));
+  G.sel=[a,b];startMatch();
+  for(const f of F){f.cpu=true;f.dummy=false;f.ai.skill=.95;}
+  TUT.demo=false;G.phase='fight';G.t=99;G.timer=99*60;G.round=1;
+  F[0].x=WW/2-130;F[1].x=WW/2+130;
+  DEMO.t=0;DEMO.endT=0;DEMO.kind=kind;
+  if(kind==='combo'){ // самое длинное (одно из трёх длинных) комбо по стоящему противнику
+    const L=COMBOS[F[0].ch.name]||[],c=pick(L.slice().sort((x,y)=>y.hits-x.hits).slice(0,3));
+    TUT.i=L.indexOf(c);TUT.demo=true;TUT.ps=0;TUT.st={k:0,key:null,w:40};
+    F[1].dummy=true;G.dummy=0;F[0].energy=100;F[0].x=WW/2-70;F[1].x=WW/2+70;
+    DEMO.cap=`${F[0].ch.name} · комбо «${c.n}» · ${c.hits} ударов`;
+  }else if(kind==='ultra'){ // противник почти без здоровья: нокаут — и ультра комбо
+    F[0].wins=1;F[1].hp=6;F[1].ai.skill=.05;F[0].energy=100;
+    DEMO.cap=`${F[0].ch.name} · ультра комбо`;
+  }else DEMO.cap=`${F[0].ch.name}  против  ${F[1].ch.name}`;
+  camX=camTarget();
+}
+function demoTick(){
+  DEMO.t++;
+  if(DEMO.kind==='combo'){
+    if(F[1].hp<30)F[1].hp=30; // показ — без нокаута
+    if(!TUT.demo&&!DEMO.endT)DEMO.endT=DEMO.t+80;
+  }
+  if(G.phase==='ko'&&G.t>95||DEMO.endT&&DEMO.t>DEMO.endT||DEMO.t>(DEMO.kind==='fight'?16:22)*60){demoNext();return true;}
+  return false;
+}
+function menuDo(a){
   if(a===1){G.mode=1;toSelect();}
   else if(a===2){G.mode=2;toSelect();}
   else if(a===3){G.mode=3;G.sel=[GRID.includes(G.trainCh)?G.trainCh:GRID[0],0];G.phase='stage';G.stRow=0;G.selT=0;} // тренировка: сначала арена
@@ -2299,7 +2344,7 @@ function menuHit(e){
   return MENU_BTN.findIndex((b,i)=>x>=MB.x&&x<=MB.x+MB.w&&y>=MB.y+i*MB.step&&y<=MB.y+i*MB.step+MB.h);
 }
 cv.addEventListener('mousemove',e=>{if(G.phase!=='menu'||G.mGo)return;const i=menuHit(e);if(i>=0&&i!==G.mi){G.mi=i;samp('ui_sel',.5,1,0);}});
-cv.addEventListener('click',e=>{if(G.phase!=='menu'||G.mGo)return;const i=menuHit(e);if(i>=0){G.mi=i;G.mClick=true;audioInit();}});// ---------- экран выбора бойца ----------
+cv.addEventListener('click',e=>{if(G.mode===4){G.demoExit=true;return;}if(G.phase!=='menu'||G.mGo)return;const i=menuHit(e);if(i>=0){G.mi=i;G.mClick=true;audioInit();}});// ---------- экран выбора бойца ----------
 // сетка 3×2 на картинке: номер бойца из CH в каждой рамке, -1 — боец ещё не готов (ЛамаГёрл)
 const GRID=[4,5,6,-2,-2,-2]; // -2 — пустая рамка
 const SELBG=new Image();SELBG.src='assets/select_bg.jpg';
@@ -2476,6 +2521,11 @@ function render(){
     txt('ПОБЕДИТЕЛЬ',W/2,200,50,'#fff');
     txt(w.ch.name+(w.cpu?' (ИИ)':''),W/2,280,90,'#ffd24a');
     txt('Enter / Options — реванш · Esc / Create — меню',W/2,340,22,'#ddd');
+  }
+  if(G.mode===4){ // демо: подпись ролика и подсказка выхода
+    ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,H-44,W,44);
+    txt(DEMO.cap,20,H-15,20,'#ffd24a','left');
+    if(frame%70<46)txt('ДЕМО · нажмите любую кнопку',W-20,H-15,18,'#fff','right');
   }
   ctx.restore();
 }
