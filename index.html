@@ -18,7 +18,7 @@ let GY=500; // GY — линия пола: середина зоны, разме
 // WW — ширина арены (мир шире экрана); camX — левый край экрана в мире. Бойцы не расходятся дальше экрана.
 const WW=1634,SPAN=W-90;
 // AL..AR — где можно стоять: левее и правее пол уходит под стену, столы и бочки (картинка шире игровой зоны)
-const AL=236,AR=1398; // края зоны для ходьбы (183…1450 на арене) с запасом на ширину бойца
+let AL=236,AR=1398; // края зоны для ходьбы с запасом на ширину бойца (у каждой арены свои, см. ARENAS)
 let camX=(WW-W)/2;
 const camTarget=()=>clamp((F[0].x+F[1].x)/2-W/2,0,WW-W);
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -145,7 +145,7 @@ function ctlLabel(a,i=0){
   return pn(PADMAP[t][a],t);
 }
 const KS={tab:0,row:0,wait:false,msg:'',held:new Set()};
-const KRES=['Escape','Enter','Tab','Backspace','Delete','KeyM','KeyV','KeyC','KeyX','KeyB','KeyN','Digit1','Digit2','Digit3','Digit4'];
+const KRES=['Escape','Enter','Tab','Backspace','Delete','KeyM','KeyV','KeyC','KeyX','KeyB','KeyN','KeyJ','Digit1','Digit2','Digit3','Digit4'];
 addEventListener('keydown',e=>{
   if(G.phase!=='keys'||!KS.wait||KS.tab>1)return;
   e.preventDefault();pressed.delete(e.code);
@@ -342,7 +342,7 @@ const CH=[
 //    hit — номер кадра удара (до него — замах, после — возврат)
 // размер ячейки берётся из самой картинки при загрузке (cw, ch в таблице — только до загрузки)
 // версия картинок: менять при каждой замене спрайтов, иначе браузеры игроков показывают старые из кэша
-const AV='20261114c';
+const AV='20261114d';
 function sheet(src,frames,cw,ch,fps,o){
   const img=new Image(),a={img,frames,cw,ch,fps,...o};
   img.onload=()=>{a.cw=img.naturalWidth/frames;a.ch=img.naturalHeight;};
@@ -584,7 +584,7 @@ function mkF(i,chi,cpu){
     seq:'',contactAt:-1,jug:0,comboDmg:0,maxCombo:0,usedSp:[],locked:false,keepBuf:false,breakT:0};
 }
 function startMatch(){
-  GY=arena().gy;
+  const A=arena();GY=A.gy;AL=A.al||236;AR=A.ar||1398;
   F=[mkF(0,G.sel[0],false),mkF(1,G.sel[1],G.mode===1)];
   if(G.mode===3){F[1].ch=DUMMY;F[1].dummy=true;G.dummy=0;G.log=[];G.list=true;TUT.i=-1;TUT.demo=false;TUT.ps=0;}
   if(G.mode===1)F[1].ai.skill=DIFF[G.diff][1];
@@ -1298,10 +1298,12 @@ function tick(net){
     }
   }else if(G.phase==='ultra'){
     ultraTick();
+    if(G.mode===3&&!net&&(pressed.has('Backspace')))startRound(); // тренировка: выйти из ультры
   }else if(G.phase==='ko'){
     if(!G.timeout&&G.t<60&&G.t%3)return; // замедление на нокауте
     world(false);
     const w=G.winner;
+    if(G.mode===3){if(G.t>130)startRound();return;} // тренировка ультры — сразу снова в тренировку
     if(G.t>60&&w&&w.y>=GY&&FREE.includes(w.state)){w.state='win';voice(w,'v_win');}
     if(G.t>200){
       if(F.some(f=>f.wins>=2)){G.phase='end';G.t=0;}
@@ -1314,9 +1316,10 @@ function tick(net){
 }
 // ---------- ультра комбо ----------
 // окно ULT_WIN кадров на нажатие спецприёма; дальше удары прожимаются вручную по показанной цепочке кнопок:
-// верная кнопка — удар, неверная или не успел за ULT_T кадров — ультра обрывается добиванием. Максимум ULT_N ударов.
+// верная кнопка — удар, неверная или не успел за ultT кадров — ультра обрывается добиванием. Максимум ULT_N ударов.
 // Цепочка у бойца постоянная (ultraSeq повторяется по кругу) — её можно выучить; беспорядочное долбление не работает.
-const ULT_WIN=150,ULT_N=60,ULT_T=36,ULT_GAP=3;
+const ULT_WIN=150,ULT_N=60,ULT_GAP=3;
+const ultT=n=>Math.round(72-n*.4); // время на кнопку: 1,2 с в начале, 0,8 с к 60-му удару
 function finishUltra(U,ultra){
   const w=U.w,d=U.d,dir=w.facing;
   w.state='idle';w.vx=0;
@@ -1369,7 +1372,7 @@ function ultraTick(){
     shake=Math.max(shake,4+U.n/8);if(U.n%10===0){hitstop=4;G.uFlash=frame+8;}
     if(!w.cpu)rumble(w.i,U.n%10===0);
     if(U.n>=ULT_N){w.uKey=w.ch.ultraFin||w.uKey;w.uT0=frame;finishUltra(U,true);}
-  }else if(U.t-U.last>ULT_T){w.uKey=w.ch.ultraFin||w.uKey;w.uT0=frame;finishUltra(U,true);} // не успел — добивание
+  }else if(U.t-U.last>ultT(U.n)){w.uKey=w.ch.ultraFin||w.uKey;w.uT0=frame;finishUltra(U,true);} // не успел — добивание
 }function toSelect(){G.phase='select';G.ok=[false,false];G.selT=0;snd('bell');}
 // ---------- обучение комбо (тренировка) ----------
 // Шаг комбо: серия ('p1,p1,k2'), спецприём ('@n' — нейтральный, '@d' — вниз, '@b' — назад) или захват / воздушная серия ('@g').
@@ -1484,6 +1487,10 @@ function training(){
   if(pressed.has('KeyV')){ // прослушка озвучки по очереди: видно, какой звук на какую роль назначен
     const v=VTEST[G.vt=((G.vt===undefined?-1:G.vt)+1)%VTEST.length];
     samp(v[0],.9,1,v[1]);G.vtMsg=`голос ${G.vt+1}/${VTEST.length}: ${v[2]}`;G.vtT=frame+240;
+  }
+  if(pressed.has('KeyJ')||(PAD[0].start&&IN[0].s)){ // тренировка ультры: болванчик сразу ошеломлён, дальше как в бою
+    TUT.demo=false;startRound();G.log=[];const d=F[1];d.state='hit';d.dazeT=d.stateT=99;
+    G.phase='ultra';G.t=0;G.ultra={w:F[0],d,run:false,n:0,t:0,train:true};snd('bell');return;
   }
   if(pressed.has('KeyN')||(PAD[0].start&&IN[0].blk)){G.arena=((G.arena||0)+1)%ARENAS.length;const ls=G.list;startMatch();G.list=ls;snd('bell');return;} // смена арены
   if(pressed.has('KeyB')||(PAD[0].start&&PAD[0].run)){ // смена бойца: по кругу среди доступных
@@ -1747,10 +1754,10 @@ const bg=document.createElement('canvas');bg.width=W;bg.height=H;
 // арена-бар: картинка шире экрана, рисуется в координатах мира. Пока не загрузилась — старый фон крыши.
 // арены: картинка 3584×1184 растягивается на мир WW×H; fgr — где лежит передний план (в пикселях картинки), gy — линия пола
 // (середина зелёной зоны разметки, в пикселях картинки); края зоны для ходьбы у обеих арен совпадают (AL..AR)
-const imgOf=s=>{const i=new Image();i.src=s;return i;};
+const imgOf=s=>{const i=new Image();i.src=s+'?v='+AV;return i;}; // версия — чтобы новая картинка арены не бралась из кэша
 const ARENAS=[
   {name:'БАР',img:imgOf('assets/arena_bar.jpg'),fg:imgOf('assets/arena_bar_fg.png'),fgr:[3041,919,338,265],gy:500,lights:true,music:MUSIC},  // ящик и бочка справа
-  {name:'БОЛЬНИЦА',img:imgOf('assets/arena_hospital.jpg'),fg:imgOf('assets/arena_hospital_fg.png'),fgr:[1044,1036,612,146],gy:Math.round(1116*540/1184),music:MUSIC_HOSP} // каталка внизу
+  {name:'БОЛЬНИЦА',img:imgOf('assets/arena_hospital.jpg'),fg:imgOf('assets/arena_hospital_fg.png'),fgr:[1044,1036,612,146],gy:Math.round(1077*540/1184),al:320,ar:1349,music:MUSIC_HOSP} // зона 585…3072 по середине полосы // каталка внизу
 ];
 const arena=()=>ARENAS[G.arena||0];
 // источники света (координаты по картинке шириной 2000): лампы, неон, автомат, окно. b — как часто мигает
@@ -1971,7 +1978,7 @@ function drawTraining(){
   if(F[0].breakT>0&&!TUT.demo)txt('СЕРИЯ СОРВАНА',52,H-86,20,'#ff5a4a','left');
   txt(`боец: ${F[0].ch.name}  [B · геймпад: бег + Options — сменить] · арена: N / блок + Options`,52,H-62,13,'#9fd8ff','left',true);
   drawTutor();
-  txt('Backspace / Options — сброс · Tab / тачпад — список · C / R3 — комбо · V — прослушать голос · M — музыка · Esc / Create — меню',W-20,H-10,12,'#999','right',true);
+  txt('Backspace / Options — сброс · Tab / тачпад — список · C / R3 — комбо · J / Options + R2 — ультра · V — прослушать голос · M — музыка · Esc / Create — меню',W-20,H-10,12,'#999','right',true);
   if(G.vtT>frame)txt(G.vtMsg,W/2,112,16,'#9fd8ff','center',true);
   if(G.list){
     const ML=moveList(F[0].ch);
@@ -2149,7 +2156,7 @@ function render(){
         const lb=ctlLabel(b,NET.on||w.cpu?0:w.i);
         txt(lb,x0+i*bw+bw/2,y+(lb.length<2?32:29),lb.length<2?(cur?30:24):Math.min(17,64/lb.length),cur?'#000':'#fff');
       }
-      const k=clamp(1-(U.t-U.last)/ULT_T,0,1);
+      const k=clamp(1-(U.t-U.last)/ultT(U.n),0,1);
       ctx.fillStyle='#000';ctx.fillRect(x0+4,y+bw-2,cnt*bw-8,8);ctx.fillStyle=k<.35?'#ff5a4a':'#4ad8ff';ctx.fillRect(x0+6,y+bw,(cnt*bw-12)*k,4);
     }
   }
