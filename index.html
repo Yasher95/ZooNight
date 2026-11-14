@@ -1978,6 +1978,7 @@ function drawTraining(){
   txt(G.log.join(' '),52,H-16,22,'#fff','left');
   if(F[0].breakT>0&&!TUT.demo)txt('СЕРИЯ СОРВАНА',52,H-86,20,'#ff5a4a','left');
   txt(`боец: ${F[0].ch.name}  [B · геймпад: бег + Options — сменить] · арена: N / блок + Options`,52,H-62,13,'#9fd8ff','left',true);
+  if(G.phase==='ultra'||G.phase==='ko'){txt('Backspace — выйти из ультры',W-20,H-10,12,'#999','right',true);return;} // идёт ультра — только её подсказки
   drawTutor();
   txt('Backspace / Options — сброс · Tab / тачпад — список · C / R3 — комбо · J / Options + R2 — ультра · V — прослушать голос · M — музыка · Esc / Create — меню',W-20,H-10,12,'#999','right',true);
   if(G.vtT>frame)txt(G.vtMsg,W/2,112,16,'#9fd8ff','center',true);
@@ -2029,6 +2030,18 @@ function selMove(ci,dx,dy){
   return ci;
 }
 const SELF=[{},{}];
+// ряд кнопок цепочки ультры: from — с какой кнопки цепочки, cnt — сколько, cur — какая подсвечена (номер в ряду, -1 — никакая)
+function ultraRow(w,from,cnt,cur,y,bw){
+  const seq=w.ch.ultraSeq||['p1','p2','k1','k2'],x0=W/2-cnt*bw/2;
+  for(let i=0;i<cnt;i++){
+    const b=seq[(from+i)%seq.length],c=i===cur;
+    ctx.fillStyle=c?'rgba(255,210,74,.95)':`rgba(0,0,0,${cur<0?.7:Math.max(.3,.75-i*.07)})`;ctx.fillRect(x0+i*bw+4,y,bw-8,bw-8);
+    ctx.strokeStyle=c?'#fff':'#666';ctx.lineWidth=c?3:1.5;ctx.strokeRect(x0+i*bw+4,y,bw-8,bw-8);
+    const lb=ctlLabel(b,NET.on||w.cpu?0:w.i),big=lb.length<2,fs=bw*(big?(c?.58:.46):.33);
+    txt(lb,x0+i*bw+bw/2,y+bw*.5+fs*.36-2,big?fs:Math.min(fs,bw*1.2/lb.length),c?'#000':'#fff');
+  }
+  return x0;
+}
 function drawStage(){
   ctx.fillStyle='rgba(5,5,15,.7)';ctx.fillRect(0,0,W,H);
   txt('ВЫБОР АРЕНЫ',W/2,64,44,'#ffd24a');
@@ -2145,17 +2158,18 @@ function render(){
       txt('ДОБЕЙ!',W/2,210,92,frame&8?'#ff3a3a':'#ffd24a');
       txt(w.cpu?'ИИ готовит ультра комбо…':`${w.i?'ИГРОК 2':'ИГРОК 1'}: ${ctlLabel('s',NET.on?0:w.i)} — УЛЬТРА КОМБО, дальше кнопки по цепочке`,W/2,262,24,'#fff');
       ctx.fillStyle='#000';ctx.fillRect(W/2-160,282,320,12);ctx.fillStyle='#ff3a3a';ctx.fillRect(W/2-158,284,316*Math.max(0,k),8);
+      if(G.mode===3||!w.cpu){ // цепочка кнопок ультры — чтобы выучить заранее
+        const seq=w.ch.ultraSeq||[];txt('цепочка ультры (повторяется по кругу):',W/2,326,16,'#ffd24a','center',true);
+        ultraRow(w,0,seq.length,-1,336,44);
+      }
     }else{
       ctx.fillStyle=`rgba(255,30,30,${G.uFlash>frame?.3:.06+.04*Math.sin(frame*.5)})`;ctx.fillRect(0,0,W,H);
       txt(`УЛЬТРА КОМБО  ${U.n} / ${ULT_N}`,W/2,130,52,frame&4?'#ffd24a':'#ff3a3a');
       // следующие кнопки цепочки: первая — сейчас
-      const seq=w.ch.ultraSeq||['p1','p2','k1','k2'],bw=52,cnt=7,x0=W/2-cnt*bw/2,y=150;
-      for(let i=0;i<cnt;i++){
-        const b=seq[(U.n+i)%seq.length],cur=!i;
-        ctx.fillStyle=cur?'rgba(255,210,74,.95)':`rgba(0,0,0,${.75-i*.07})`;ctx.fillRect(x0+i*bw+4,y,bw-8,bw-8);
-        ctx.strokeStyle=cur?'#fff':'#666';ctx.lineWidth=cur?3:1.5;ctx.strokeRect(x0+i*bw+4,y,bw-8,bw-8);
-        const lb=ctlLabel(b,NET.on||w.cpu?0:w.i);
-        txt(lb,x0+i*bw+bw/2,y+(lb.length<2?32:29),lb.length<2?(cur?30:24):Math.min(17,64/lb.length),cur?'#000':'#fff');
+      const seq=w.ch.ultraSeq||['p1','p2','k1','k2'],bw=52,cnt=7,y=150,x0=ultraRow(w,U.n,cnt,0,y,bw);
+      if(G.mode===3){ // тренировка: вся цепочка, текущая кнопка подсвечена
+        txt('вся цепочка:',W/2,236,14,'#ffd24a','center',true);
+        ultraRow(w,0,seq.length,U.n%seq.length,244,36);
       }
       const k=clamp(1-(U.t-U.last)/ultT(U.n),0,1);
       ctx.fillStyle='#000';ctx.fillRect(x0+4,y+bw-2,cnt*bw-8,8);ctx.fillStyle=k<.35?'#ff5a4a':'#4ad8ff';ctx.fillRect(x0+6,y+bw,(cnt*bw-12)*k,4);
