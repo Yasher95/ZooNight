@@ -220,6 +220,7 @@ function moveList(ch){
     .map(k=>{const b=k.split(','),ks=b.map((_,i)=>b.slice(0,i+1).join(','));adv.push(ks.map(s=>advOf(s,M[STR[s]],ch)));
       return b.map(x=>l(x)).join(' ');}); // только кнопки серии (уровни ударов и подбросы не пишем)
   rows.unshift('В верх · С середина · Н низ · О оверхед','блок стоя: В С О · блок сидя: В С Н','цифры — в блоке: + ты первый · − ты открыт','↑ подброс · ↓ от пола · → в стену · ✶ ошеломление');
+  if(ch.feel){const[a,b]=ch.feel.split(': ');rows.unshift(a,b||'','');adv.unshift([],[],[]);} // стиль бойца — первой строкой
   const sp=(s,n)=>{rows.push(s);adv[rows.length-1]=[M[n].badv];};
   rows.push('');sp(`назад + ${l('p2')} — оверхед (О), отскок`,'smash');if(ch.fp2)sp(`вперёд + ${l('p2')} — удар курткой, далеко →`,ch.fp2);rows.push('удары в прыжке — оверхед (О)');
   if(ch.cp)sp(`${l('d')} + ${l('p1')}/${l('p2')} — удар рукой сидя`,ch.cp);else sp(`${l('d')} + ${l('p1')}/${l('p2')} — апперкот ↑`,'upper');sp(`${l('d')} + ${l('k1')}/${l('k2')} — подсечка`,'sweep');rows.push('');
@@ -357,7 +358,8 @@ function sheet(src,frames,cw,ch,fps,o){
 const HS=(n,frames,cw,ch,fps,o)=>sheet('assets/horseman_'+n+'.png',frames,cw,ch,fps,o);
 const HM_JAB=HS('jab',4,320,384,0,{hit:2}),HM_UP=HS('upper',5,204,418,0,{hit:3}),HM_OH=HS('hammer',5,246,410,0,{hit:2}),
   HM_KNEE=HS('knee',5,302,384,0,{hit:2});
-CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'#fff',speed:5.2,power:1.05,special:'ram',voice:true,
+CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'#fff',speed:5.2,power:1.05,special:'ram',voice:true,run:1.8,
+  feel:'КОНЬ — универсал: средняя скорость, длинные ноги, захват в воздухе',
   sp:{n:'ram',d:'rise',b:'mule',g:'grab'},
   // ультра комбо: цепочка кнопок (повторяется по кругу), удары под каждую кнопку, добивание
   ultraSeq:['p1','p1','p2','k2','p1','k1','k2','k2','p2','k1'],ultraAn:{p1:['jab','cross'],p2:['hook','elbow','backfist'],k1:['hkick','sidekick'],k2:['kick','knee']},ultraFin:'round',
@@ -391,7 +393,8 @@ CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'
 const LS=(n,frames,cw,ch,fps,o)=>sheet('assets/lama_'+n+'.png',frames,cw,ch,fps,{pal:1,...o});
 const SPITBALL=sheet('assets/lama_spitball.png',8,174,119,0,{});
 const LM_HAM=(o)=>LS('hammer',6,306,428,0,o),LM_AXE=(o)=>LS('axe',5,260,410,0,o),LM_UP=LS('upper',5,192,420,0,{hit:3});
-CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:5.6,power:1.05,special:'spit',pv:11,pc:'#c8e86a',voice:true,vp:'l_',
+CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',speed:6.1,power:.95,special:'spit',run:1.9,grav:.78,dj:true,def:1.12,
+  feel:'ЛАМА — быстрая и лёгкая: двойной прыжок (↑ в воздухе), долгий прыжок, длинные серии; держит удар хуже всех',pv:11,pc:'#c8e86a',voice:true,vp:'l_',
   sp:{n:'spit',d:'wheel',b:'dropkick',g:'grab'},fp2:'ljacket',
   ultraSeq:['p2','k2','p1','p1','k1','k2','p2','p1','k1','k1'],ultraAn:{p1:['lbf'],p2:['lhead'],k1:['laxe','lspin'],k2:['lknee']},ultraFin:'lround',rave:true,cap:12,psheet:SPITBALL,pm:{dmg:7,kb:4,akb:1,stun:18,type:'mid',chip:1,y0:95,y1:125,special:true,pop:11}, // плевок: в воздухе подкидывает, раз за комбо
   spn:{n:'плевок — снаряд',d:'колесо ↑↑',b:'удар двумя ногами →'},cp:'cpunch',
@@ -438,7 +441,8 @@ const PS=(n,frames,cw,ch,fps,o)=>sheet('assets/pit_'+n+'.png',frames,cw,ch,fps,{
 const PT_JAB=(o)=>PS('jab',5,348,384,0,o),PT_UP=PS('upper',6,266,406,0,{hit:3}),PT_KNEE=PS('knee',5,356,393,0,{hit:2}),
   PT_KICK=PS('kick',5,302,384,0,{hit:3}),PT_SPIN=PS('spin',5,316,384,0,{hit:2}),PT_HAM=(o)=>PS('hammer',3,224,400,0,o),
   PT_BITE=(o)=>PS('bite',6,252,374,0,o),PT_THR=(o)=>PS('throw',5,318,384,0,o),PT_HIT=(o)=>PS('hit_mid',5,212,373,18,o);
-CH.push({name:'PITBULL',body:'#555',pants:'#222',accent:'#c22',glove:'#333',speed:4.9,power:1.25,special:'pcharge',
+CH.push({name:'PITBULL',body:'#555',pants:'#222',accent:'#c22',glove:'#333',speed:4.1,power:1.28,run:1.6,jmp:.92,grav:1.25,def:.85,kbt:.7,
+  feel:'ПИТБУЛЬ — тяжёлый: медленный, низкий прыжок, держит удар лучше всех, броня на тяжёлых ударах',special:'pcharge',
   sp:{n:'pcharge',d:'roar',b:'pbutt',g:'pbite'},bite:true,tdown:true,cap:10,
   spn:{n:'рывок на четвереньках ↑',d:'рык — ярость: урон +20%',b:'удар головой ✶'},
   ultraSeq:['p1','p2','p1','k2','p2','k1','p1','p1','k2','p2'],ultraAn:{p1:['pjab','pcross'],p2:['pbody','pupper'],k1:['pkick','pspin'],k2:['pknees']},ultraFin:'pcharge',
@@ -541,10 +545,11 @@ const M={
   ljacket:{su:13,ac:4,rc:17,dmg:8,reach:112,y0:90,y1:175,kb:11,stun:22,type:'mid',pose:'hook',adv:2,wall:true,heavy:true},
   ldaze:  {su:7,ac:4,rc:13,dmg:6,reach:70, y0:110,y1:160,kb:1.5,stun:20,type:'mid', pose:'hook',  adv:8,daze:50,heavy:true},
   // ЛамаГёрл: свои удары серий, удар рукой сидя и спецприёмы (плевок — снаряд, колесо, удар двумя ногами)
-  lbf:    {su:4,ac:3,rc:8, dmg:3,reach:84, y0:120,y1:158,kb:3,  stun:15,type:'high',pose:'cross', adv:3,pop:5.6},
-  lhead:  {su:4,ac:3,rc:9, dmg:5,reach:66, y0:104,y1:150,kb:3,  stun:17,type:'mid', pose:'hook',  adv:8,pop:5.6},
-  lknee:  {su:5,ac:4,rc:10,dmg:5,reach:68, y0:60, y1:120,kb:3,  stun:17,type:'mid', pose:'knee',  adv:6,pop:6.2},
-  laxe:   {su:7,ac:4,rc:13,dmg:7,reach:86, y0:110,y1:196,kb:4.5,stun:19,type:'high',pose:'hkick', adv:4,pop:6.6},
+  // лама быстрее всех: замахи на кадр короче, урон меньше, зато серии длиннее
+  lbf:    {su:3,ac:3,rc:7, dmg:3,reach:84, y0:120,y1:158,kb:3,  stun:15,type:'high',pose:'cross', adv:3,pop:5.6},
+  lhead:  {su:3,ac:3,rc:8, dmg:4,reach:66, y0:104,y1:150,kb:3,  stun:16,type:'mid', pose:'hook',  adv:8,pop:5.6},
+  lknee:  {su:4,ac:4,rc:9, dmg:4,reach:68, y0:60, y1:120,kb:3,  stun:16,type:'mid', pose:'knee',  adv:6,pop:6.2},
+  laxe:   {su:6,ac:4,rc:12,dmg:6,reach:86, y0:110,y1:196,kb:4.5,stun:18,type:'high',pose:'hkick', adv:4,pop:6.6},
   lhammer:{su:9,ac:4,rc:14,dmg:8,reach:78, y0:50, y1:180,kb:2,  stun:22,type:'over',pose:'hammer',adv:5,gb:true,heavy:true},
   lupper: {su:6,ac:5,rc:12,dmg:8,reach:72, y0:70, y1:210,kb:1.5,stun:20,type:'mid', pose:'upper', adv:5,launch:15,heavy:true},
   lround: {su:9,ac:5,rc:16,dmg:9,reach:98, y0:100,y1:175,kb:14, stun:22,type:'mid', pose:'hkick', adv:6,launch:6,wall:true,heavy:true},
@@ -554,18 +559,19 @@ const M={
   wheel:  {su:8,ac:8, rc:15,dmg:8,reach:78,y0:30,y1:230,kb:1, akb:1,stun:22,launch:17,type:'mid',pose:'upper',special:true,rush:7, heavy:true},
   dropkick:{su:7,ac:10,rc:16,dmg:9,reach:92,y0:70,y1:165,kb:15,      stun:24,launch:6, type:'mid',pose:'kick', special:true,rush:10,wall:true,heavy:true},
   // Питбуль
-  pjab:  {su:3,ac:3,rc:7, dmg:3,reach:80, y0:126,y1:156,kb:3,  stun:15,type:'high',pose:'punch',adv:3},
-  pcross:{su:4,ac:3,rc:9, dmg:5,reach:86, y0:118,y1:156,kb:3,  stun:16,type:'high',pose:'cross',adv:6},
-  pbody: {su:5,ac:3,rc:10,dmg:6,reach:84, y0:92, y1:136,kb:3.5,stun:17,type:'mid', pose:'cross',adv:5},
-  pupper:{su:6,ac:5,rc:12,dmg:9,reach:72, y0:70, y1:205,kb:1.5,stun:20,type:'mid', pose:'upper',adv:5,launch:15,heavy:true},
-  pknee: {su:7,ac:5,rc:13,dmg:8,reach:80, y0:70, y1:185,kb:2,  stun:20,type:'mid', pose:'knee', adv:9,launch:13,heavy:true},
-  pknees:{su:6,ac:4,rc:11,dmg:6,reach:72, y0:70, y1:140,kb:3,  stun:17,type:'mid', pose:'knee', adv:8},
-  pkick: {su:6,ac:4,rc:12,dmg:6,reach:100,y0:80, y1:132,kb:5,  stun:18,type:'mid', pose:'kick', adv:4},
-  pteep: {su:7,ac:4,rc:15,dmg:8,reach:100,y0:80, y1:140,kb:14, stun:22,type:'mid', pose:'kick', adv:5,launch:6,wall:true,heavy:true},
-  pspin: {su:7,ac:4,rc:14,dmg:7,reach:92, y0:118,y1:166,kb:4,  stun:20,type:'high',pose:'cross',adv:6},
-  pdaze: {su:7,ac:4,rc:14,dmg:6,reach:92, y0:118,y1:166,kb:1.5,stun:20,type:'high',pose:'cross',adv:6,daze:54,heavy:true},
-  pcharge:{su:9,ac:14,rc:16,dmg:9,reach:64,y0:40, y1:150,kb:2,akb:1.5,stun:22,launch:12,type:'mid',pose:'dash',special:true,rush:12,heavy:true},
-  pbutt: {su:8,ac:5,rc:16,dmg:8,reach:70, y0:110,y1:175,kb:1.5,stun:22,type:'mid', pose:'hook', special:true,rush:7,daze:56,heavy:true},
+  // медленнее остальных на кадр-два, бьёт тяжелее; ar — броня на замахе (держит одно попадание)
+  pjab:  {su:4,ac:3,rc:8, dmg:4,reach:80, y0:126,y1:156,kb:3.5,stun:16,type:'high',pose:'punch',adv:3},
+  pcross:{su:5,ac:3,rc:10,dmg:6,reach:86, y0:118,y1:156,kb:3.5,stun:17,type:'high',pose:'cross',adv:6},
+  pbody: {su:6,ac:3,rc:11,dmg:7,reach:84, y0:92, y1:136,kb:4,  stun:18,type:'mid', pose:'cross',adv:5,heavy:true},
+  pupper:{su:7,ac:5,rc:13,dmg:10,reach:72,y0:70, y1:205,kb:1.5,stun:20,type:'mid', pose:'upper',adv:5,launch:15,heavy:true,armor:true},
+  pknee: {su:8,ac:5,rc:14,dmg:9,reach:80, y0:70, y1:185,kb:2,  stun:20,type:'mid', pose:'knee', adv:9,launch:13,heavy:true,armor:true},
+  pknees:{su:7,ac:4,rc:12,dmg:7,reach:72, y0:70, y1:140,kb:3,  stun:18,type:'mid', pose:'knee', adv:8},
+  pkick: {su:7,ac:4,rc:13,dmg:7,reach:100,y0:80, y1:132,kb:5,  stun:18,type:'mid', pose:'kick', adv:4},
+  pteep: {su:9,ac:4,rc:15,dmg:10,reach:100,y0:80,y1:140,kb:14, stun:22,type:'mid', pose:'kick', adv:5,launch:6,wall:true,heavy:true,armor:true},
+  pspin: {su:8,ac:4,rc:14,dmg:8,reach:92, y0:118,y1:166,kb:4,  stun:20,type:'high',pose:'cross',adv:6,heavy:true},
+  pdaze: {su:8,ac:4,rc:14,dmg:7,reach:92, y0:118,y1:166,kb:1.5,stun:20,type:'high',pose:'cross',adv:6,daze:54,heavy:true},
+  pcharge:{su:9,ac:14,rc:16,dmg:10,reach:64,y0:40,y1:150,kb:2,akb:1.5,stun:22,launch:12,type:'mid',pose:'dash',special:true,rush:12,heavy:true,armor:true},
+  pbutt: {su:8,ac:5,rc:16,dmg:9,reach:70, y0:110,y1:175,kb:1.5,stun:22,type:'mid', pose:'hook', special:true,rush:7,daze:56,heavy:true,armor:true},
   roar:  {su:10,ac:1,rc:18,pose:'cast',special:true,roar:true},
   // мёртвая хватка: ловит ошеломлённого или подброшенного; мимо — долгое восстановление
   pbite: {su:5,ac:7,rc:22,reach:84,y0:20,y1:200,type:'mid',pose:'hook',special:true,grab:true,adv:5},
@@ -718,7 +724,7 @@ function feed(f,inp){
 }
 function startMove(f,name,seq){
   f.state='attack';f.move=M[name];f.mname=name;f.seq=seq||'';f.at=0;f.hitDone=false;f.contactAt=-1;f.res=0;
-  f.locked=false;f.keepBuf=false;
+  f.locked=false;f.keepBuf=false;f.armUsed=false;
   if(!f.move.air)f.vx=f.facing*(f.move.adv||0);
   f.buf=newBuf();f.running=false;snd('swing');
   if(f.move.dmg)voice(f,f.move.special?'v_sp':'v_atk',f.move.special||f.move.heavy?1:.3);
@@ -778,7 +784,7 @@ function techThrow(a,d){
 function doThrow(a,d){
   const dir=a.facing,dmg=(a.ch.tdown?14:12)*a.ch.power*DMG;
   a.combo=1;a.comboDmg=dmg;a.comboT=110;a.usedSp=[];
-  d.hp-=dmg;d.jug=0;d.usedWB=d.usedGB=d.wb=d.gbPending=d.usedDaze=false;d.dazeT=0;
+  d.hp-=dmg*(d.ch.def||1);d.jug=0;d.usedWB=d.usedGB=d.wb=d.gbPending=d.usedDaze=false;d.dazeT=0;
   a.energy=Math.min(100,a.energy+4);d.energy=Math.min(100,d.energy+3);
   a.state='attack';a.mname='throwEnd';a.move=M.throwEnd;a.at=0;a.seq='';a.hitDone=true;a.contactAt=-1;a.locked=false;
   d.state='hit';d.stateT=30;d.flash=5;d.y=GY-1;d.vy=a.ch.tdown?3:-8;d.vx=dir*(a.ch.tdown?2:7);d.launched=true;d.buf=newBuf(); // питбуль валит на пол
@@ -822,7 +828,7 @@ function endRave(a,d,full,ko){
 function raveHit(a,d,base,heavy){
   const g=a.gr,dmg=base*a.ch.power*Math.max(.15,1-.08*a.combo)*DMG;
   a.combo++;a.comboT=110;a.maxCombo=Math.max(a.maxCombo||0,a.combo);a.comboDmg+=dmg;
-  d.hp-=dmg;d.flash=4;g.ht=9;g.jolt=7;
+  d.hp-=dmg*(d.ch.def||1);d.flash=4;g.ht=9;g.jolt=7;
   a.energy=Math.min(100,a.energy+2);
   const hx=d.x-g.side*14,hy=d.y-95;
   hitstop=heavy?6:2;shake=Math.max(shake,heavy?12:4);
@@ -892,7 +898,7 @@ function endBite(a,d,full,ko){
 function biteHit(a,d,base,heavy){
   const g=a.gr,dmg=base*a.ch.power*(a.rage>0?1.2:1)*Math.max(.15,1-.08*a.combo)*DMG;
   a.combo++;a.comboT=110;a.maxCombo=Math.max(a.maxCombo||0,a.combo);a.comboDmg+=dmg;
-  d.hp-=dmg;d.flash=4;g.ht=8;d.anKey=null;
+  d.hp-=dmg*(d.ch.def||1);d.flash=4;g.ht=8;d.anKey=null;
   a.energy=Math.min(100,a.energy+2);
   const hx=d.x-g.side*12,hy=d.y-150;
   hitstop=heavy?6:3;shake=Math.max(shake,heavy?12:5);
@@ -975,7 +981,7 @@ function updGrab(a,d){
     g.n++;
     const dmg=GR.dmg[g.n-1]*a.ch.power*Math.max(.15,1-.08*a.combo)*DMG;
     a.combo++;a.comboT=110;a.maxCombo=Math.max(a.maxCombo||0,a.combo);a.comboDmg+=dmg;
-    d.hp-=dmg;d.jug++;d.flash=5;
+    d.hp-=dmg*(d.ch.def||1);d.jug++;d.flash=5;
     const cx=clamp(a.x-g.side*100,AL-10,AR+10);
     hitstop=7;shake=Math.max(shake,11+g.n*3);
     burst(cx,GY,'#cfcfcf',18,7);blood(cx,GY-14,a.facing,26);snd('hit');snd('fall');voice(d,'v_hurt');voice(a,'v_atk');
@@ -1047,13 +1053,19 @@ function resolveHit(a,d,m,dir,isProj,ender){
     if(!isProj)a.vx-=dir*2;
     burst(hx,hy,'#cfe0ff',6,4);snd('block');hitstop=3;return;
   }
+  // броня (тяжёлые удары питбуля): одно попадание на замахе не прерывает удар — половина урона, без оглушения
+  if(!canBlock&&d.state==='attack'&&d.move.armor&&d.at<d.move.su+d.move.ac&&!d.armUsed&&d.y>=GY){
+    d.armUsed=true;d.hp=Math.max(1,d.hp-(m.dmg||0)*a.ch.power*DMG*.5*(d.ch.def||1));d.flash=3;
+    hitstop=5;shake=Math.max(shake,6);burst(hx,hy,'#ff9a3c',12,5);snd('block');
+    d.msg='БРОНЯ!';d.msgC='#ff9a3c';d.msgT=frame+40;a.energy=Math.min(100,a.energy+2);return;
+  }
   // комбо считается, пока жертва не вышла из оглушения
   if(d.state!=='hit'){a.combo=0;a.comboDmg=0;a.usedSp=[];d.jug=0;d.usedWB=d.usedGB=d.wb=d.gbPending=d.usedDaze=false;}
   d.dazeT=0;
   if(m.special)a.usedSp.push(isProj?'proj':a.mname);
   a.combo++;a.comboT=110;a.maxCombo=Math.max(a.maxCombo||0,a.combo);
   const scale=Math.max(.15,1-.08*(a.combo-1)),dmg=m.dmg*a.ch.power*scale*DMG*(a.rage>0&&!isProj?1.2:1); // ярость питбуля — +20%
-  d.hp-=dmg;a.comboDmg+=dmg;
+  d.hp-=dmg*(d.ch.def||1);a.comboDmg+=dmg;
   a.energy=Math.min(100,a.energy+4);d.energy=Math.min(100,d.energy+3); // шкала копится только действиями
   const air=d.y<GY,atWall=d.x<=AL+2||d.x>=AR-2;
   // на земле оглушение на кадр короче восстановления атакующего: без отмены продолжить нельзя (минус 1)
@@ -1062,6 +1074,7 @@ function resolveHit(a,d,m,dir,isProj,ender){
   let decay=m.special?1:Math.max(.45,1-.05*d.jug);
   if(a.ch.cap&&a.combo>a.ch.cap)decay*=m.special?.5:.25; // потолок комбо бойца: дальше противник почти не подлетает // чем дольше джаггл, тем ниже подбрасывает; спецприёмы — в полную силу
   d.vx=dir*(air&&!m.wall?(m.akb!==undefined?m.akb:Math.min(m.kb,2.5)):m.kb);
+  if(!air)d.vx*=d.ch.kbt||1; // тяжёлого питбуля откидывает меньше
   if(m.gb&&!d.usedGB){
     if(air){d.vy=14;d.gbPending=true;}else{d.vy=-12;d.y-=1;d.usedGB=true;}
   }else if(m.launch){d.vy=-m.launch*decay*clamp(1-(GY-d.y)/500,.55,1);if(!air)d.y-=1;} // чем выше висит, тем слабее подброс
@@ -1103,7 +1116,7 @@ function updF(f,o,inp){
 
   if(FREE.includes(f.state)){
     if(ground){
-      f.facing=o.x>=f.x?1:-1;f.airAtk=false;
+      f.facing=o.x>=f.x?1:-1;f.airAtk=false;f.dj=false;
       f.running=false;
       if(f.buf.s>0&&!inp.blk&&trySpecial(f,o,inp)){}
       else if(inp.blk){f.state='block';f.crouching=!!inp.d;f.vx=0;}
@@ -1114,7 +1127,7 @@ function updF(f,o,inp){
         f.crouching=false;
         const dir=(inp.r?1:0)-(inp.l?1:0);
         f.running=!!inp.run&&dir===f.facing; // бег только вперёд
-        f.vx=dir*f.ch.speed*(f.running?1.75:dir===f.facing?1:.8);
+        f.vx=dir*f.ch.speed*(f.running?f.ch.run||1.75:dir===f.facing?1:.8);
         f.state=dir?'walk':'idle';
         if(dir)f.walkT+=(f.running?.36:.22)*dir*f.facing;
         const b=BTN.find(b=>f.buf[b]>0);
@@ -1123,11 +1136,14 @@ function updF(f,o,inp){
         else if(b)startMove(f,strOf(f)[b],b);
         else if(inp.run&&dir===-f.facing&&!f.bdCd){ // отскок назад: уходит от броска, но 16 кадров открыт для удара
           startMove(f,'backdash','');f.vx=-f.facing*11;f.bdCd=34;f.tInv=12;
-        }else if(inp.u){f.vy=-15.5;f.vx=dir*f.ch.speed*(f.running?1.6:1.15);f.state='jump';f.y-=1;snd('jump');}
+        }else if(inp.u){f.vy=-15.5*(f.ch.jmp||1);f.vx=dir*f.ch.speed*(f.running?1.6:1.15);f.state='jump';f.y-=1;snd('jump');}
       }
     }else{
       f.state='jump';
-      if(!f.airAtk&&(anyP||anyK)){f.airAtk=true;startMove(f,anyP?'jpunch':'jkick');}
+      if(f.ch.dj&&!f.dj&&!f.airAtk&&inp.uE&&f.vy>-8){ // лама: второй прыжок в воздухе, можно сменить направление
+        const dir=(inp.r?1:0)-(inp.l?1:0);f.dj=true;f.vy=-12.5;f.vx=dir*f.ch.speed*1.1;
+        burst(f.x,f.y-10,'#e8e8f0',10,4);snd('jump');
+      }else if(!f.airAtk&&(anyP||anyK)){f.airAtk=true;startMove(f,anyP?'jpunch':'jkick');}
     }
   }else if(f.state==='attack'){
     let m=f.move;
@@ -1194,7 +1210,7 @@ function updF(f,o,inp){
   else if(f.state==='ko'){if(ground)f.vx*=.85;}
   else if(f.state==='win'){f.vx=0;}
 
-  const g=f.state==='hit'?.8*(1+.05*(f.jug||0)):.8;
+  const g=f.state==='hit'?.8*(1+.05*(f.jug||0)):.8*(f.ch.grav||1); // своя гравитация прыжка; в жонглировании — общая
   if(f.y<GY||f.vy<0){f.vy+=g;f.y+=f.vy;if(f.y>=GY){f.y=GY;f.vy=0;}}
   f.x+=f.vx;
   if(f.x<AL||f.x>AR){
@@ -1281,6 +1297,7 @@ function aiInput(f,o){
     return inp;
   }
   if(f.y<GY){ // в прыжке: по прыгающему — рукой, по стоящему — ногой
+    if(f.ch.dj&&!f.dj&&!f.airAtk&&f.vy>-3&&f.vy<3&&R()<.08){inp.uE=1;if(R()<.5)inp[dist>120?fw:bk]=1;return inp;} // лама: второй прыжок
     if(o.y<GY-40&&o.state!=='hit'&&dist<100&&!f.airAtk&&R()<.4)inp.p1=1;
     else if(dist<110&&f.vy>2&&!f.airAtk&&R()<.5)inp.k2=1;
     return inp;
