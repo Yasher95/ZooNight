@@ -1252,14 +1252,14 @@ function tick(net){
   if(G.phase==='menu'){
     if(pressed.has('Digit1')||pressed.has('Numpad1')||PAD[0].fx){G.mode=1;toSelect();}
     else if(pressed.has('Digit2')||pressed.has('Numpad2')||PAD[0].fo){G.mode=2;toSelect();}
-    else if(pressed.has('Digit3')||pressed.has('Numpad3')||PAD[0].ft){G.mode=3;G.sel=[GRID.includes(G.trainCh)?G.trainCh:GRID[0],0];snd('bell');startMatch();}
+    else if(pressed.has('Digit3')||pressed.has('Numpad3')||PAD[0].ft){G.mode=3;G.sel=[GRID.includes(G.trainCh)?G.trainCh:GRID[0],0];snd('bell');G.phase='stage';G.stRow=0;G.selT=0;} // тренировка: сначала арена
     else if(pressed.has('Digit4')||pressed.has('Numpad4')||PAD[0].fs){G.phase='net';NET.ui='';NET.msg='';snd('bell');}
     else if(pressed.has('Digit5')||pressed.has('Numpad5')||PAD[0].start){G.phase='keys';KS.tab=lastDev==='pad'?2:0;KS.row=0;KS.wait=false;KS.msg='';snd('bell');}
     return;
   }
   if(G.phase==='net'){netMenu();return;}
   if(G.phase==='keys'){keysMenu();return;}
-  if(!net&&(pressed.has('Escape')||PAD[0].back||PAD[1].back)){if(G.phase==='stage')toSelect();else G.phase='menu';return;}
+  if(!net&&(pressed.has('Escape')||PAD[0].back||PAD[1].back)){if(G.phase==='stage'&&G.mode!==3)toSelect();else G.phase='menu';return;}
   if(G.phase==='select'){
     for(let i=0;i<2;i++){
       if(i===1&&G.mode===1)continue;
@@ -1485,7 +1485,7 @@ function training(){
     const v=VTEST[G.vt=((G.vt===undefined?-1:G.vt)+1)%VTEST.length];
     samp(v[0],.9,1,v[1]);G.vtMsg=`голос ${G.vt+1}/${VTEST.length}: ${v[2]}`;G.vtT=frame+240;
   }
-  if(pressed.has('KeyN')){G.arena=((G.arena||0)+1)%ARENAS.length;const ls=G.list;startMatch();G.list=ls;snd('bell');return;} // смена арены
+  if(pressed.has('KeyN')||(PAD[0].start&&IN[0].blk)){G.arena=((G.arena||0)+1)%ARENAS.length;const ls=G.list;startMatch();G.list=ls;snd('bell');return;} // смена арены
   if(pressed.has('KeyB')||(PAD[0].start&&PAD[0].run)){ // смена бойца: по кругу среди доступных
     const pl=GRID.filter(c=>c>=0);G.sel[0]=G.trainCh=pl[(pl.indexOf(G.sel[0])+1)%pl.length];
     const ls=G.list;startMatch();G.list=ls;snd('bell');return;
@@ -1969,7 +1969,7 @@ function drawTraining(){
   txt(`болванчик: ${['стоит','сидит','блок стоя','блок сидя'][G.dummy]}  [1 / 2 / 3 / 4]`,52,H-44,13,'#bbb','left',true);
   txt(G.log.join(' '),52,H-16,22,'#fff','left');
   if(F[0].breakT>0&&!TUT.demo)txt('СЕРИЯ СОРВАНА',52,H-86,20,'#ff5a4a','left');
-  txt(`боец: ${F[0].ch.name}  [B · геймпад: бег + Options — сменить] · арена: N`,52,H-62,13,'#9fd8ff','left',true);
+  txt(`боец: ${F[0].ch.name}  [B · геймпад: бег + Options — сменить] · арена: N / блок + Options`,52,H-62,13,'#9fd8ff','left',true);
   drawTutor();
   txt('Backspace / Options — сброс · Tab / тачпад — список · C / R3 — комбо · V — прослушать голос · M — музыка · Esc / Create — меню',W-20,H-10,12,'#999','right',true);
   if(G.vtT>frame)txt(G.vtMsg,W/2,112,16,'#9fd8ff','center',true);
