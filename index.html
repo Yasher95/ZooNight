@@ -214,22 +214,23 @@ function drawKeys(){
   txt('↑ ↓ — выбор · ← → — раздел · Enter / ✕ — изменить · Delete — сбросить раздел · Esc / Create — назад (сохраняется само)',W/2,H-14,13,'#999','center',true);
 }
 // список приёмов с теми кнопками, на которых игрок играет
-function moveList(ch){
-  const l=ctlLabel,adv=[[],[],[],[]],STR=ch.str||window.STR_ALL,cs=ch.sp||{};
+// fc — куда смотрит боец: «назад» и «вперёд» пишутся реальными стрелками / клавишами
+function moveList(ch,fc=1){
+  const l=ctlLabel,BK=l(fc>0?'l':'r'),FW=l(fc>0?'r':'l'),adv=[[],[],[],[]],STR=ch.str||window.STR_ALL,cs=ch.sp||{};
   const rows=Object.keys(STR).filter(k=>!Object.keys(STR).some(o=>o.startsWith(k+',')))
     .map(k=>{const b=k.split(','),ks=b.map((_,i)=>b.slice(0,i+1).join(','));adv.push(ks.map(s=>advOf(s,M[STR[s]],ch)));
       return b.map(x=>l(x)).join(' ');}); // только кнопки серии (уровни ударов и подбросы не пишем)
   rows.unshift('В верх · С середина · Н низ · О оверхед','блок стоя: В С О · блок сидя: В С Н','цифры — в блоке: + ты первый · − ты открыт','↑ подброс · ↓ от пола · → в стену · ✶ ошеломление');
   if(ch.feel){const[a,b]=ch.feel.split(': ');rows.unshift(a,b||'','');adv.unshift([],[],[]);} // стиль бойца — первой строкой
   const sp=(s,n)=>{rows.push(s);adv[rows.length-1]=[M[n].badv];};
-  rows.push('');sp(`назад + ${l('p2')} — оверхед (О), отскок`,'smash');if(ch.fp2)sp(`вперёд + ${l('p2')} — удар курткой, далеко →`,ch.fp2);rows.push('удары в прыжке — оверхед (О)');
+  rows.push('');sp(`назад ${BK} + ${l('p2')} — оверхед (О), отскок`,'smash');if(ch.fp2)sp(`вперёд ${FW} + ${l('p2')} — удар курткой, далеко →`,ch.fp2);rows.push('удары в прыжке — оверхед (О)');
   if(ch.cp)sp(`${l('d')} + ${l('p1')}/${l('p2')} — удар рукой сидя`,ch.cp);else sp(`${l('d')} + ${l('p1')}/${l('p2')} — апперкот ↑`,'upper');sp(`${l('d')} + ${l('k1')}/${l('k2')} — подсечка`,'sweep');rows.push('');
-  if(ch.spn){rows.push(`${l('s')} — ${ch.spn.n}`);sp(`${l('d')} + ${l('s')} — ${ch.spn.d}`,cs.d);sp(`назад + ${l('s')} — ${ch.spn.b}`,cs.b);}
-  else{sp(`${l('s')} — таран ↑`,'ram');sp(`${l('d')} + ${l('s')} — подъём ↑↑`,'rise');sp(`назад + ${l('s')} — лягание →`,'mule');}
-  if(cs.g)rows.push(ch.rave?`${l('g')} по подброшенному — воздушная серия`:ch.bite?`${l('g')} по ошеломлённому / подброшенному — хватка: ← → тряска, потом кнопки`:`${l('g')} — захват в воздухе, об пол ×3`);
+  if(ch.spn){rows.push(`${l('s')} — ${ch.spn.n}`);sp(`${l('d')} + ${l('s')} — ${ch.spn.d}`,cs.d);sp(`назад ${BK} + ${l('s')} — ${ch.spn.b}`,cs.b);}
+  else{sp(`${l('s')} — таран ↑`,'ram');sp(`${l('d')} + ${l('s')} — подъём ↑↑`,'rise');sp(`назад ${BK} + ${l('s')} — лягание →`,'mule');}
+  if(cs.g)rows.push(ch.rave?`${l('g')} по подброшенному — воздушная серия`:ch.bite?`${l('g')} по ошеломлённому / подброшенному — хватка: ${BK} ${FW} тряска, потом кнопки`:`${l('g')} — захват в воздухе, об пол ×3`);
   rows.push(
     `${l('g')} вблизи — бросок (выход — ${l('g')})`,
-    `${l('run')} + назад — отскок`);
+    `${l('run')} + назад ${BK} — отскок`);
   if(ch.ultraSeq){ // ультра комбо
     rows.push('','УЛЬТРА — на решающем нокауте («ДОБЕЙ!»):',`  ${l('s')}, затем кнопки по кругу (до 60 ударов):`,'  '+ch.ultraSeq.map(x=>l(x)).join(' '),
       '  ошибка / пауза — конец · в тренировке: J / Options+R2');
@@ -1641,7 +1642,7 @@ function tutStep(c,ch){
   if(c==='@g')return`${l('g')}  — ${ch.rave?'воздушная серия':ch.bite?'мёртвая хватка':'захват'} (QTE)`;
   if(c[0]==='@'){
     const nm=(ch.spn||{n:'таран',d:'подъём',b:'лягание'})[c[1]].replace(/ [↑→—].*$/,'');
-    return(c==='@d'?l('d')+' + ':c==='@b'?'назад + ':'')+l('s')+'  — '+nm;
+    return(c==='@d'?l('d')+' + ':c==='@b'?'назад '+l(F[0]&&F[0].facing<0?'r':'l')+' + ':'')+l('s')+'  — '+nm;
   }
   const m=M[(ch.str||STR)[c]];
   return c.split(',').map(x=>l(x)).join(' ')+(m&&m.daze?'  ✶ ошеломление':'');
@@ -2173,7 +2174,7 @@ function drawTraining(){
   txt('Backspace / Options — сброс · Tab / тачпад — список · C / R3 — комбо · J / Options + R2 — ультра · V — прослушать голос · M — музыка · Esc / Create — меню',W-20,H-10,12,'#999','right',true);
   if(G.vtT>frame)txt(G.vtMsg,W/2,112,16,'#9fd8ff','center',true);
   if(G.list){
-    const ML=moveList(F[0].ch);
+    const ML=moveList(F[0].ch,F[0].facing);
     const st=Math.min(16,(H-128)/ML.length),fs=Math.min(12,st*.78); // длинный список сжимается, чтобы влез в экран
     ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(W-322,96,312,ML.length*st+12);
     ML.forEach((s,i)=>{
