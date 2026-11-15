@@ -1895,6 +1895,7 @@ function netClose(msg){
   try{if(N.conn)N.conn.close();}catch(e){}
   try{if(N.relay&&N.relay!==N.conn)N.relay.close();}catch(e){}
   try{if(N.peer)N.peer.destroy();}catch(e){}
+  if(window.steamNet&&(N.via==='steam'||N.ui==='shost'||N.ui==='sjoin'))steamNet.leave();
   const was=N.on;
   Object.assign(N,{on:false,peer:null,conn:null,relay:null,via:'',ui:'',pings:[],msg:msg||''});
   if(was&&msg){G.phase='net';}
@@ -2041,12 +2042,54 @@ addEventListener('keydown',e=>{
   else if(e.key==='Enter'){if(NET.code.length===5)netJoin(NET.code);}
   else if(/^[a-zA-Z0-9]$/.test(e.key)&&NET.code.length<5)NET.code+=e.key.toUpperCase();
 });
-const netLink=()=>location.origin+location.pathname+'?room='+NET.code;
+// в сборке для Steam страница открыта не с сайта — ссылка для друга ведёт на сайт игры
+const netLink=()=>(window.steamNet?'https://yasher95.github.io/ZooNight/':location.origin+location.pathname)+'?room='+NET.code;
+
+// ---------- игра через Steam (только в сборке для Steam, где есть window.steamNet) ----------
+// Хозяин создаёт лобби «только для друзей» и приглашает друга через оверлей Steam. Друг (игра у него уже запущена)
+// принимает приглашение в Steam — игра входит в лобби и шлёт hello хозяину. Пакеты идут через сеть Steam:
+// она сама обходит роутеры. Дальше — тот же лок-степ, что и в браузерной версии.
+const STEAM={on:!!window.steamNet,ok:false,name:'',err:''};
+if(STEAM.on){
+  steamNet.info().then(i=>{STEAM.ok=i.ok;STEAM.name=i.name||'';STEAM.err=i.err||'';});
+  steamNet.onData((from,str)=>{
+    let d;try{d=JSON.parse(str);}catch(e){return;}
+    const c=NET.conn;
+    if(d.hello){if(NET.ui==='shost'&&!NET.on&&!(c&&c.steam))steamAdopt(from);return;}
+    if(c&&c.steam&&c.peer===from)netData(d);
+  });
+  steamNet.onMember((who,st)=>{if(st!==0&&NET.conn&&NET.conn.steam&&NET.conn.peer===who)netClose('Соперник вышел из лобби');});
+  steamNet.onInvited(id=>steamJoin(id));
+}
+const steamConn=peer=>({open:true,steam:true,peer,h:{},on(e,f){this.h[e]=f;},send(o){steamNet.send(peer,JSON.stringify(o));},close(){this.open=false;}});
+function steamAdopt(peer){NET.conn=steamConn(peer);NET.via='steam';NET.msg='Друг зашёл, замер связи…';NET.pings=[];netSend({ping:performance.now()});}
+function steamHost(){
+  if(!STEAM.ok){NET.msg='Steam не найден: '+STEAM.err+' — запусти Steam и перезапусти игру';return;}
+  netClose('');G.phase='net';NET.ui='shost';NET.msg='Создаём лобби Steam…';
+  steamNet.host().then(id=>{if(NET.ui!=='shost')return;NET.msg='';steamNet.invite();}).catch(()=>{NET.ui='';NET.msg='Не удалось создать лобби Steam';});
+}
+function steamJoin(id){
+  if(!STEAM.ok)return;
+  netClose('');vidStop();G.mode=1;G.phase='net';NET.ui='sjoin';NET.gotPing=false;NET.msg='Входим в лобби друга…';
+  steamNet.join(id).then(owner=>{
+    if(NET.ui!=='sjoin')return;
+    NET.conn=steamConn(owner);NET.via='steam';NET.msg='Связь с другом через Steam…';
+    const t0=performance.now();netSend({hello:1});clearInterval(NET.helloT);
+    NET.helloT=setInterval(()=>{
+      if(NET.on||!NET.conn||NET.gotPing){clearInterval(NET.helloT);return;}
+      if(performance.now()-t0>15000){clearInterval(NET.helloT);netClose('Друг не отвечает — пусть создаст лобби заново');G.phase='net';return;}
+      netSend({hello:1});
+    },1000);
+  }).catch(()=>{NET.ui='';NET.msg='Не удалось войти в лобби друга';});
+}
+
 function netMenu(){
   if(pressed.has('Escape')||PAD[0].back){netClose('');G.phase='menu';return;}
   if(NET.ui===''){
     if(pressed.has('Digit1')||pressed.has('Numpad1')||PAD[0].fx)netHost();
     else if(pressed.has('Digit2')||pressed.has('Numpad2')||PAD[0].fo){NET.ui='join';NET.code='';NET.msg='';pressed.clear();}
+    else if(STEAM.on&&(pressed.has('Digit3')||pressed.has('Numpad3')||PAD[0].ft))steamHost();
+  }else if(NET.ui==='shost'&&(pressed.has('Digit3')||pressed.has('Numpad3')||PAD[0].ft)){steamNet.invite(); // открыть приглашение ещё раз
   }else if(NET.ui==='join'&&NET.code.length===5&&(PAD[0].fx||PAD[0].start)){netJoin(NET.code); // вход по ссылке с геймпада
   }else if(NET.ui==='host'&&NET.code&&pressed.has('KeyC')){
     try{navigator.clipboard.writeText(netLink());NET.msg='Ссылка скопирована — отправь её другу';}catch(e){}
@@ -2059,8 +2102,17 @@ function drawNet(){
   if(N.ui===''){
     txt('[1] / ✕   Создать комнату',W/2,220,30,'#fff');
     txt('[2] / ○   Войти по коду',W/2,262,30,'#fff');
-    txt('Один создаёт комнату и передаёт другу код или ссылку, второй входит.',W/2,330,16,'#ddd','center',true);
-    txt('Управление у каждого своё: геймпад или клавиатура — как настроено в меню «Управление».',W/2,356,16,'#ddd','center',true);
+    if(STEAM.on)txt('[3] / △   Пригласить друга из Steam',W/2,304,30,STEAM.ok?'#9fd8ff':'#777');
+    const y0=STEAM.on?346:330;
+    txt(STEAM.on?(STEAM.ok?`Steam: ${STEAM.name}. Друг тоже запускает игру и принимает приглашение в Steam.`:'Steam не запущен — игра с друзьями из Steam недоступна'):'Один создаёт комнату и передаёт другу код или ссылку, второй входит.',W/2,y0,16,'#ddd','center',true);
+    txt('Управление у каждого своё: геймпад или клавиатура — как настроено в меню «Управление».',W/2,y0+26,16,'#ddd','center',true);
+  }else if(N.ui==='shost'){
+    txt('ЛОББИ STEAM',W/2,200,40,'#9fd8ff');
+    txt('Выбери друга в окне Steam и нажми «Пригласить».',W/2,250,20,'#fff','center',true);
+    txt('Друг должен уже запустить игру — тогда приглашение примется прямо в ней.',W/2,278,16,'#ddd','center',true);
+    txt('[3] / △ — открыть приглашение ещё раз · ждём друга…',W/2,320,18,'#ffd24a','center',true);
+  }else if(N.ui==='sjoin'){
+    txt('ЛОББИ STEAM',W/2,220,40,'#9fd8ff');
   }else if(N.ui==='host'){
     if(N.code){
       txt('Код комнаты',W/2,200,24,'#ddd');
@@ -2077,7 +2129,7 @@ function drawNet(){
   txt('Esc / Create — назад',W/2,H-30,14,'#999','center',true);
 }
 function drawNetHud(){
-  txt(`сеть${NET.via==='relay'?' (ретранслятор)':''} · пинг ${NET.ping} мс · задержка ввода ${NET.D} кадр.`+(NET.resync?` · синхр. ${NET.resync}`:''),W/2,H-8,11,'#8fb','center',true);
+  txt(`сеть${NET.via==='relay'?' (ретранслятор)':NET.via==='steam'?' (Steam)':''} · пинг ${NET.ping} мс · задержка ввода ${NET.D} кадр.`+(NET.resync?` · синхр. ${NET.resync}`:''),W/2,H-8,11,'#8fb','center',true);
   if(NET.wait>20)txt('ждём соперника…',W/2,130,24,'#ffd24a');
 }
 // ссылка вида ...?room=ABCDE сразу открывает вход в комнату (подключение — после первого нажатия, чтобы включился звук)

@@ -1,0 +1,11 @@
+{
+  "name": "zoo-night",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "description": "ZOO NIGHT",
+  "author": "ZooNight",
+  "scripts": { "start": "electron .", "build": "node build.js" },
+  "dependencies": { "steamworks.js": "0.4.0" },
+  "devDependencies": { "electron": "33.2.1", "@electron/packager": "18.3.6" }
+}
