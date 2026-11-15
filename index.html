@@ -1536,7 +1536,7 @@ function tick(net){
     }
     if(G.mode===1&&G.ok[0]&&!G.ok[1]){{const pl=GRID.filter(c=>c>=0);G.sel[1]=pl[Math.random()*pl.length|0];}G.ok[1]=true;samp('ui_sel',.8,1,0);}
     if(G.mode===3&&G.ok[0]&&!G.ok[1]){G.ok[1]=true;G.sel[1]=G.sel[0];G.trainCh=G.sel[0];} // соперник в тренировке — манекен (выбирается сам)
-    if(G.ok[0]&&G.ok[1]&&G.mode===3&&G.tutPick&&++G.selT>20){G.arena=G.arena||0;startMatch();tutStart();return;} // обучение — сразу на арену
+    if(G.ok[0]&&G.ok[1]&&G.mode===3&&G.tutPick&&++G.selT>20){G.arena=Math.max(0,ARENAS.findIndex(a=>a.tut));startMatch();tutStart();return;} // обучение — сразу на арену-додзё
     if(G.ok[0]&&G.ok[1]&&++G.selT>(G.mode===3?20:40)){G.phase='stage';G.stRow=0;G.selT=0;}
     return;
   }
@@ -2419,7 +2419,8 @@ const bg=document.createElement('canvas');bg.width=W;bg.height=H;
 const imgOf=s=>{const i=new Image();i.src=s+'?v='+AV;return i;}; // версия — чтобы новая картинка арены не бралась из кэша
 const ARENAS=[
   {name:'БАР',img:imgOf('assets/arena_bar.jpg'),fg:imgOf('assets/arena_bar_fg.png'),fgr:[3041,919,338,265],gy:500,lights:true,music:MUSIC},  // ящик и бочка справа
-  {name:'БОЛЬНИЦА',img:imgOf('assets/arena_hospital.jpg'),fg:imgOf('assets/arena_hospital_fg.png'),fgr:[1044,1036,612,146],gy:Math.round(1077*540/1184),al:320,ar:1349,music:MUSIC_HOSP} // зона 585…3072 по середине полосы // каталка внизу
+  {name:'БОЛЬНИЦА',img:imgOf('assets/arena_hospital.jpg'),fg:imgOf('assets/arena_hospital_fg.png'),fgr:[1044,1036,612,146],gy:Math.round(1077*540/1184),al:320,ar:1349,music:MUSIC_HOSP}, // зона 585…3072 по середине полосы // каталка внизу
+  {name:'ДОДЗЁ',img:imgOf('assets/arena_dojo.jpg'),gy:Math.round(1062.5*540/1184),al:104,ar:1531,tut:true} // арена обучения; зелёная полоса y 1007…1118, x 111…3472; переднего плана нет
 ];
 const arena=()=>ARENAS[G.arena||0];
 // источники света (координаты по картинке шириной 2000): лампы, неон, автомат, окно. b — как часто мигает
@@ -2793,7 +2794,7 @@ function ultraRow(w,from,cnt,cur,y,bw){
 function drawStage(){
   ctx.fillStyle='rgba(5,5,15,.7)';ctx.fillRect(0,0,W,H);
   txt('ВЫБОР АРЕНЫ',W/2,64,44,'#ffd24a');
-  const cw=400,ch=132,gap=40,x0=W/2-(ARENAS.length*cw+(ARENAS.length-1)*gap)/2,y=104;
+  const gap=30,cw=Math.min(400,(W-60-(ARENAS.length-1)*gap)/ARENAS.length),ch=cw*132/400,x0=W/2-(ARENAS.length*cw+(ARENAS.length-1)*gap)/2,y=104;
   ARENAS.forEach((a,i)=>{
     const x=x0+i*(cw+gap),sel=i===(G.arena||0);
     if(imgOk(a.img))ctx.drawImage(a.img,x,y,cw,ch);else{ctx.fillStyle='#222';ctx.fillRect(x,y,cw,ch);}
