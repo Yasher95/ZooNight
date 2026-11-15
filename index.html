@@ -390,7 +390,7 @@ CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'
     fall:HS('air',8,344,183,8),air:HS('air',8,344,183,8),down:HS('fall',11,278,384,14,{once:1,f0:6,n:5}),
     jab:HM_JAB,punch:HM_JAB,cross:HS('cross',4,376,386,0,{hit:2}),hook:HS('hook',3,230,383,0,{hit:2}),
     backfist:HS('backfist',5,256,385,0,{hit:3}),elbow:HS('elbow',5,204,383,0,{hit:2}),hdaze:HS('elbow',5,204,383,0,{hit:2}),
-    upper:HM_UP,upper2:HM_UP,hammer:HM_OH,smash:HM_OH,
+    upper:HM_UP,upper2:HM_UP,hammer:HM_OH,smash:HM_OH,hover:HM_OH,hlow:HS('lowkick',3,290,383,0,{hit:1}),
     kick:HS('kick',5,294,387,0,{hit:2}),sidekick:HS('sidekick',4,376,388,0,{hit:2}),lowkick:HS('lowkick',3,290,383,0,{hit:1}),
     knee:HM_KNEE,riseknee:HM_KNEE,hkick:HS('hkick',5,310,404,0,{hit:2}),round:HS('round',6,386,383,0,{hit:3}),
     ram:HS('ram',6,632,383,0,{hit:3}),rise:HS('rise',6,396,452,0,{hit:3}),mule:HS('mule',6,290,383,0,{hit:3}),
@@ -420,10 +420,13 @@ CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',
     'p2,k2':'lknee','p2,k2,k2':'laxe','p2,k2,k2,p2':'lupper','p2,k2,p1':'ldaze',
     k2:'lknee','k2,k2':'laxe','k2,k2,p1':'lbf','k2,k2,p1,p1':'lhead','k2,k2,p1,p1,k1':'lround',
     'k2,p1':'lbf','k2,p1,p2':'lhead','k2,p1,p2,k1':'lspin',
-    k1:'laxe','k1,k1':'lspin','k1,p2':'lhead','k1,p2,p1':'lbf','k1,p2,p1,k2':'lknee','k1,p2,p1,k2,p2':'lupper'},
+    k1:'laxe','k1,k1':'lspin','k1,p2':'lhead','k1,p2,p1':'lbf','k1,p2,p1,k2':'lknee','k1,p2,p1,k2,p2':'lupper',
+    // миксапы: после △△ — □ сверху / ○ в ноги; после □△ — □ сверху / △ в ноги
+    'p1,p1,k1':'llow','p2,p1,p2':'lover','p2,p1,p1':'llow'},
   sadv:{'p1,p1':1,'p2,p1':2,'p2,k2':2,'k2,p1':-2,'k1,p2':-3,'k1,p2,p1':3,'p1,k2':-4,'k2,k2':-6,'k2,k2,p1':1,'p2,p1,k2':-3},
   ai:[['p2','p1','k1'],['p2','k2','p1'],['p1','p1','p2'],['p1','p1','k2','k2','p2'],['p1','p1','k2','k1'],['p2','k2','k2','p2'],['k2','k2','p1','p1','k1'],
-    ['p1','k2','p1','k1'],['k1','k1'],['k1','p2','p1','k2','p2'],['p2','p1','k2','k1','p2'],['k2','p1','p2','k1']],
+    ['p1','k2','p1','k1'],['k1','k1'],['k1','p2','p1','k2','p2'],['p2','p1','k2','k1','p2'],['k2','p1','p2','k1'],
+    ['p1','p1','k1'],['p2','p1','p2'],['p2','p1','p1']],
   aij:[['p1','p1','k2','k2','p2'],['p2','k2','k2','p2'],['k2','k2','p1','p1','k1'],['p1','k2','p1','k1'],['k1','p2','p1','k2','p2'],['k2','p1','p2','k1']],
   desc:'Спрайт · плевок',scale:.5,sprite:{
     idle:LS('idle',8,196,399,10),
@@ -439,6 +442,7 @@ CH.push({name:'LAMAGIRL',body:'#222',pants:'#e85a9a',accent:'#fff',glove:'#eee',
     lknee:LM_AXE({n:2,hit:1}),laxe:LM_AXE({hit:2}),lhammer:LM_HAM({hit:3}),smash:LM_HAM({hit:3}),
     lupper:LM_UP,upper:LM_UP,lround:LS('round',6,304,401,0,{hit:3}),lspin:LS('spin',6,404,407,0,{hit:3}),
     cpunch:LS('cpunch',8,312,291,0,{hit:4}),sweep:LS('sweep',7,582,283,0,{f0:4,n:3,hit:1}),
+    llow:LS('sweep',7,582,283,0,{f0:4,n:3,hit:1}),lover:LM_HAM({hit:3}),
     jpunch:LS('jpunch',6,490,417,0,{f0:2,n:2,hit:1}),jkick:LS('jkick',6,394,420,0,{f0:3,n:1}),
     spit:LS('spit',6,196,384,0),wheel:LS('wheel',6,356,418,0,{hit:3}),dropkick:LS('dropkick',6,364,414,0,{hit:3}),
     // воздушная серия (L2 по подброшенному): прыжок за противником — кадры апперкота; удары серии — кадры обычных ударов
@@ -465,9 +469,12 @@ CH.push({name:'PITBULL',voice:true,vp:'p_',body:'#555',pants:'#222',accent:'#c22
     'p1,p2':'pbody','p1,p2,p2':'pupper',
     p2:'pbody','p2,p1':'pcross','p2,p1,k1':'pdaze','p2,p1,p2':'pupper','p2,k2':'pknee',
     k2:'pknees','k2,p1':'pcross','k2,p1,p2':'pspin','k2,p1,p2,k1':'pteep','k2,k2':'pknee',
-    k1:'pkick','k1,p2':'pbody','k1,p2,p1':'pspin','k1,p2,p1,p2':'pupper','k1,k1':'pteep'},
+    k1:'pkick','k1,p2':'pbody','k1,p2,p1':'pspin','k1,p2,p1,p2':'pupper','k1,k1':'pteep',
+    // миксапы: после △△ — △ сверху / ✕ в ноги; после □△ — ✕ в ноги; после ✕△ — △ сверху
+    'p1,p1,p1':'pover','p1,p1,k2':'plow','p2,p1,k2':'plow','k2,p1,p1':'pover'},
   sadv:{'p1,p1':1,'p2,p1':1,'k2,p1':-2,'k1,p2':-2,'p1,p2':-1},
-  ai:[['p1','p1','p2','k2'],['p1','p1','k1'],['p2','p1','k1'],['p2','p1','p2'],['k2','p1','p2','k1'],['k1','p2','p1','p2'],['k1','k1'],['p1','p2','p2'],['k2','k2']],
+  ai:[['p1','p1','p2','k2'],['p1','p1','k1'],['p2','p1','k1'],['p2','p1','p2'],['k2','p1','p2','k1'],['k1','p2','p1','p2'],['k1','k1'],['p1','p2','p2'],['k2','k2'],
+    ['p1','p1','p1'],['p1','p1','k2'],['p2','p1','k2'],['k2','p1','p1']],
   aij:[['p1','p1','p2','k2'],['p2','p1','p2'],['k1','p2','p1','p2'],['p1','p2','p2'],['k2','p1','p2','k1'],['p1','p1','k1']],
   desc:'Спрайт · хватка',scale:.53,sprite:{
     idle:PS('idle',6,192,385,8),
@@ -482,7 +489,7 @@ CH.push({name:'PITBULL',voice:true,vp:'p_',body:'#555',pants:'#222',accent:'#c22
     pjab:PT_JAB({n:3,hit:1}),pcross:PT_JAB({f0:2,n:3,hit:1}),pbody:PS('punch',6,268,384,0,{hit:2}),
     pupper:PT_UP,upper:PT_UP,pknee:PT_KNEE,pknees:PT_KNEE,pkick:PT_KICK,pteep:PT_KICK,pspin:PT_SPIN,pdaze:PT_SPIN,
     smash:PT_HAM({hit:2}),jpunch:PT_HAM({n:2,hit:1}),jkick:PS('knee',5,356,393,0,{f0:2,n:1}),
-    sweep:PS('sweep',5,338,384,0,{f0:1,n:3,hit:1}),
+    sweep:PS('sweep',5,338,384,0,{f0:1,n:3,hit:1}),plow:PS('sweep',5,338,384,0,{f0:1,n:3,hit:1}),pover:PT_HAM({hit:2}),
     pcharge:PS('charge',6,436,343,0,{hit:4}),pbutt:PS('headbutt',5,320,384,0,{hit:2}),roar:PS('roar',5,198,384,0,{hit:3}),
     // хватка: бросок с открытой пастью -> тряска (кадры укуса по очереди) -> рывок
     pbite:PT_BITE({n:2,hit:1}),bt_rise:PT_BITE({n:2}),bt_l:PT_BITE({f0:2,n:1,hit:0}),bt_r:PT_BITE({f0:3,n:1,hit:0}),bt_fin:PT_BITE({f0:4,n:1,hit:0}),
@@ -563,7 +570,7 @@ const M={
   lhead:  {su:3,ac:3,rc:8, dmg:4,reach:66, y0:104,y1:150,kb:3,  stun:16,type:'mid', pose:'hook',  adv:8,pop:5.6},
   lknee:  {su:4,ac:4,rc:9, dmg:4,reach:68, y0:60, y1:120,kb:3,  stun:16,type:'mid', pose:'knee',  adv:6,pop:6.2},
   laxe:   {su:6,ac:4,rc:12,dmg:6,reach:86, y0:110,y1:196,kb:4.5,stun:18,type:'high',pose:'hkick', adv:4,pop:6.6},
-  lhammer:{su:9,ac:4,rc:14,dmg:8,reach:78, y0:50, y1:180,kb:2,  stun:22,type:'over',pose:'hammer',adv:5,gb:true,heavy:true},
+  lhammer:{su:12,ac:4,rc:14,dmg:8,reach:78, y0:50, y1:180,kb:2,  stun:22,type:'over',pose:'hammer',adv:5,gb:true,heavy:true},
   lupper: {su:6,ac:5,rc:12,dmg:8,reach:72, y0:70, y1:210,kb:1.5,stun:20,type:'mid', pose:'upper', adv:5,launch:15,heavy:true},
   lround: {su:9,ac:5,rc:16,dmg:9,reach:98, y0:100,y1:175,kb:14, stun:22,type:'mid', pose:'hkick', adv:6,launch:6,wall:true,heavy:true},
   lspin:  {su:8,ac:5,rc:15,dmg:8,reach:94, y0:90, y1:180,kb:2,  stun:21,type:'high',pose:'hkick', adv:7,launch:13,heavy:true},
@@ -589,13 +596,23 @@ const M={
   // мёртвая хватка: ловит ошеломлённого или подброшенного; мимо — долгое восстановление
   pbite: {su:5,ac:7,rc:22,reach:84,y0:20,y1:200,type:'mid',pose:'hook',special:true,grab:true,adv:5},
   biteEnd:{su:0,ac:0,rc:12,pose:'hammer',special:true},
-  biteFail:{su:0,ac:0,rc:22,pose:'hammer',special:true}
+  biteFail:{su:0,ac:0,rc:22,pose:'hammer',special:true},
+  // концовки серий-миксапов: от одного начала серия уходит в ноги (Н — держит только блок сидя) или сверху (О — только блок стоя).
+  // Замах заметно дольше обычного (12–15 кадров), чтобы соперник успевал увидеть и переключить блок.
+  // В ноги — сбивает с ног; сверху — отскок от пола, можно продолжать комбо. В блоке оба наказуемы.
+  hlow: {su:12,ac:4,rc:14,dmg:6,reach:96, y0:0, y1:44, kb:4,stun:20,launch:6,type:'low', pose:'lowkick',adv:4,mix:true},
+  hover:{su:14,ac:4,rc:14,dmg:8,reach:82, y0:60,y1:178,kb:2,stun:22,type:'over',pose:'hammer', adv:6,gb:true,heavy:true,mix:true},
+  llow: {su:11,ac:4,rc:14,dmg:5,reach:100,y0:0, y1:40, kb:4,stun:20,launch:6,type:'low', pose:'sweep',  adv:4,crouch:true,mix:true},
+  lover:{su:13,ac:4,rc:14,dmg:7,reach:80, y0:50,y1:180,kb:2,stun:22,type:'over',pose:'hammer', adv:6,gb:true,heavy:true,mix:true},
+  plow: {su:12,ac:4,rc:15,dmg:7,reach:96, y0:0, y1:42, kb:4,stun:20,launch:6,type:'low', pose:'sweep',  adv:4,crouch:true,mix:true},
+  pover:{su:15,ac:4,rc:15,dmg:9,reach:84, y0:55,y1:180,kb:2,stun:22,type:'over',pose:'hammer', adv:6,gb:true,heavy:true,armor:true,mix:true}
 };
 // преимущество в блоке (кадры): до -2 безопасно, от -5 и ниже наказывается
 const BADV={jab:1,cross:-2,hook:-3,backfist:-4,elbow:-3,upper2:-13,hammer:-7,kick:-2,sidekick:-6,lowkick:-4,knee:-3,
   riseknee:-13,hkick:-5,round:-11,upper:-13,sweep:-13,dash:-14,ram:-15,rise:-20,mule:-12,hdaze:-12,ldaze:-12,ljacket:-9,
   lbf:1,lhead:-2,lknee:-3,laxe:-5,lhammer:-7,lupper:-13,lround:-11,lspin:-12,cpunch:-1,wheel:-20,dropkick:-13,
-  pjab:1,pcross:-2,pbody:-3,pupper:-13,pknee:-12,pknees:-3,pkick:-2,pteep:-10,pspin:-5,pdaze:-12,pcharge:-15,pbutt:-14,roar:-16};
+  pjab:1,pcross:-2,pbody:-3,pupper:-13,pknee:-12,pknees:-3,pkick:-2,pteep:-10,pspin:-5,pdaze:-12,pcharge:-15,pbutt:-14,roar:-16,
+  hlow:-9,hover:-8,llow:-9,lover:-8,plow:-10,pover:-9};
 for(const k in BADV)M[k].badv=BADV[k];
 // у серий своё преимущество: плюсовые серии продолжают давление, минусовые оставляют открытым
 const SADV={'p1,p1,p2':2,'p2,p1':1,'p2,k2':3,'k2,k2':-4,'k2,k2,p1':2,'k1,p2':-2,'k1,p2,p1':4,'k2,p1':-3};
@@ -616,7 +633,9 @@ const STR=window.STR_ALL={
   k2:'kick','k2,k2':'sidekick','k2,k2,p1':'elbow','k2,k2,p1,p2':'upper2',
   'k2,p1':'backfist','k2,p1,p2':'hammer',
   k1:'hkick','k1,k1':'round','k1,p2':'hook','k1,p2,p1':'backfist',
-  'p2,p1,k1':'hdaze'
+  'p2,p1,k1':'hdaze',
+  // миксапы: после △△ — □ средний / ○ в ноги / △ сверху; после □✕ — ✕ средний / ○ в ноги / △ сверху
+  'p1,p1,k1':'hlow','p1,p1,p1':'hover','p2,k2,k1':'hlow','p2,k2,p1':'hover'
 };
 const strOf=f=>f.ch.str||STR; // у бойца могут быть свои серии
 const BTN=['p1','p2','k1','k2'],SP_COST=25;
@@ -769,7 +788,8 @@ function trySpecial(f,o,inp){
     f.facing=o.x>=f.x?1:-1;f.crouching=false;startMove(f,'throw','');return true;
   }
   const face=o.x>=f.x?1:-1,name=sp[f.sDir||'n']||sp.n; // направление запоминается в момент нажатия
-  if(o.state==='hit'&&f.usedSp.includes(M[name].proj?'proj':name))return false; // каждый спецприём — раз за комбо
+  // каждый спецприём — раз за комбо; захват / воздушная серия / хватка записываются как 'grab'
+  if(o.state==='hit'&&f.usedSp.includes(f.sDir==='g'||M[name].grab?'grab':M[name].proj?'proj':name))return false;
   f.facing=face;f.energy-=SP_COST;f.crouching=false;
   startMove(f,name,'');
   return true;
@@ -882,6 +902,7 @@ function updRave(a,d){
     if(k<1)return;
     if(!raveHit(a,d,RV.first))return;
     g.phase='qte';g.qi=0;g.qte=RV.seq[0];g.qt=g.qmax=RV.qt[0];
+    if(g.pend){const q=g.pend;g.pend=null;for(const p of q)if(a.gr===g)qtePress(a,d,p);} // кнопки, нажатые ещё во время взлёта
   }else if(g.phase==='qte'){
     g.h=Math.max(95,g.h-.3);ravePlace(a,d); // без ударов оба понемногу опускаются
     if(--g.qt<=0)endRave(a,d,false);
@@ -952,6 +973,7 @@ function updBite(a,d){
     g.akey='bt_l';
     if(!biteHit(a,d,BT.first,true))return;
     g.phase='qte';g.qi=0;g.qt=g.qmax=BT.qt[0];
+    if(g.pend){const q=g.pend;g.pend=null;for(const p of q)if(a.gr===g)qtePress(a,d,p);} // нажатия во время броска
   }else if(g.phase==='qte'){bitePlace(a,d);if(--g.qt<=0)endBite(a,d,false);}
   else if(g.phase==='gap'){
     bitePlace(a,d);
@@ -1031,7 +1053,18 @@ function updGrab(a,d){
 // кнопки для следующего удара об пол: по порядку, ошибка — срыв
 function qtePress(a,d,inp){
   const g=a.gr;
-  if(a.state!=='grab'||!g||g.phase!=='qte')return;
+  if(a.state!=='grab'||!g)return;
+  // воздушная серия / хватка: нажатия в паузах не теряются. Во время взлёта — запоминается одно нажатие,
+  // в паузе между фазами — вторая фаза начинается сразу (раньше кнопка пропадала, а следующая уже не совпадала — серия рвалась)
+  if(g.kind&&g.phase!=='qte'){
+    const any=BTN.some(b=>inp[b])||inp.lE||inp.rE;
+    if(!any)return;
+    if(g.phase==='rise'){(g.pend=g.pend||[]).push({p1:inp.p1,p2:inp.p2,k1:inp.k1,k2:inp.k2,lE:inp.lE,rE:inp.rE});return;}
+    if(g.phase!=='gap')return;
+    if(g.kind==='rave'){g.n=1;d.jug++;g.phase='qte';g.qi=0;g.qte=RV.seq[1];g.qt=g.qmax=RV.qt[1];}
+    else{g.n=1;g.phase='qte';g.qi=0;g.qte=BT.seq2.slice();g.qt=g.qmax=BT.qt[1];}
+  }
+  if(g.phase!=='qte')return;
   if(g.kind){if(g.kind==='bite')bitePress(a,d,inp);else ravePress(a,d,inp);return;}
   for(const b of BTN){
     if(!inp[b])continue;
@@ -1284,7 +1317,8 @@ function targetPose(f){
 // ---------- ИИ ----------
 // ИИ играет по тем же правилам, что и человек: серии по попаданию, джагглы, спецприёмы, блок, наказания, броски.
 // ai.skill 0..1 — реакция, точность исполнения, угадывание низ/верх.
-const AI_STR=[['p2','p1','p2'],['p2','p1','k1'],['p1','p1','p2','k1'],['k2','k2','p1','p2'],['p1','k2','p2'],['p1','p1','k2','k1'],['k2','p1','p2'],['k1','k1']];
+const AI_STR=[['p2','p1','p2'],['p2','p1','k1'],['p1','p1','p2','k1'],['k2','k2','p1','p2'],['p1','k2','p2'],['p1','p1','k2','k1'],['k2','p1','p2'],['k1','k1'],
+  ['p1','p1','k1'],['p1','p1','p1'],['p2','k2','k1'],['p2','k2','p1']];
 const AI_JUG=[['p1','p1','p2','k1'],['k2','k2','p1','p2'],['p1','p1','k2','k1'],['p2','p1','p2']];
 function aiInput(f,o){
   const ai=f.ai,inp={},R=Math.random,sk=ai.skill===undefined?.75:ai.skill;
@@ -1475,10 +1509,10 @@ function tick(net){
     return;
   }  if(G.phase==='net'){netMenu();return;}
   if(G.phase==='keys'){keysMenu();return;}
-  if(!net&&(pressed.has('Escape')||PAD[0].back||PAD[1].back)){if(G.phase==='stage'&&G.mode!==3)toSelect();else G.phase='menu';return;}
+  if(!net&&(pressed.has('Escape')||PAD[0].back||PAD[1].back)){if(G.phase==='stage')toSelect();else G.phase='menu';return;}
   if(G.phase==='select'){
     for(let i=0;i<2;i++){
-      if(i===1&&G.mode===1)continue;
+      if(i===1&&(G.mode===1||G.mode===3))continue; // против ИИ и в тренировке выбирает только игрок 1
       const n=IN[i];
       if(!G.ok[i]){
         const dx=(n.rE?1:0)-(n.lE?1:0),dy=dx?0:(n.dE?1:0)-(n.uE?1:0);
@@ -1487,7 +1521,8 @@ function tick(net){
       }
     }
     if(G.mode===1&&G.ok[0]&&!G.ok[1]){{const pl=GRID.filter(c=>c>=0);G.sel[1]=pl[Math.random()*pl.length|0];}G.ok[1]=true;samp('ui_sel',.8,1,0);}
-    if(G.ok[0]&&G.ok[1]&&++G.selT>40){G.phase='stage';G.stRow=0;G.selT=0;}
+    if(G.mode===3&&G.ok[0]&&!G.ok[1]){G.ok[1]=true;G.sel[1]=G.sel[0];G.trainCh=G.sel[0];} // соперник в тренировке — манекен (выбирается сам)
+    if(G.ok[0]&&G.ok[1]&&++G.selT>(G.mode===3?20:40)){G.phase='stage';G.stRow=0;G.selT=0;}
     return;
   }
   if(G.phase==='stage'){ // арена и сложность ИИ; выбирает игрок 1
@@ -1649,7 +1684,7 @@ function demoTick(){
 function menuDo(a){
   if(a===1){G.mode=1;toSelect();}
   else if(a===2){G.mode=2;toSelect();}
-  else if(a===3){G.mode=3;G.sel=[GRID.includes(G.trainCh)?G.trainCh:GRID[0],0];G.phase='stage';G.stRow=0;G.selT=0;} // тренировка: сначала арена
+  else if(a===3){G.mode=3;G.sel=[GRID.includes(G.trainCh)?G.trainCh:GRID[0],0];toSelect();} // тренировка: выбор бойца, потом арена
   else if(a===4){G.phase='net';NET.ui='';NET.msg='';}
   else if(a===5){G.phase='keys';KS.tab=lastDev==='pad'?2:0;KS.row=0;KS.wait=false;KS.msg='';}
 }
@@ -2611,6 +2646,7 @@ function drawSelect(){
   txt('ВЫБОР БОЙЦА',W/2,60,44,'#ffd24a');
   if(NET.on)txt('Игра по сети · ты — '+(NET.me?'P2 (красная рамка)':'P1 (синяя рамка)'),W/2,88,16,'#7dff8a','center',true);
   else if(G.mode===1)txt('Против компьютера · сложность — на следующем экране',W/2,88,16,'#ffd24a','center',true);
+  else if(G.mode===3)txt('ТРЕНИРОВКА · выбери бойца, затем арену',W/2,88,16,'#7dff8a','center',true);
   for(let s=0;s<6;s++){
     const{x,y,w,h}=SLOT(s),ci=GRID[s],im=SELP[ci];
     if(imgOk(im))ctx.drawImage(im,x,y,w,h);
@@ -2624,6 +2660,9 @@ function drawSelect(){
     if(ci===-1){ctx.fillStyle='rgba(8,8,12,.6)';ctx.fillRect(x+8,y+8,w-16,h-16);txt('СКОРО',x+w/2,y+h/2+7,20,'#bbb');}
   }
   for(let pl=0;pl<2;pl++){
+    if(pl===1&&G.mode===3){ // в тренировке справа — подсказка вместо второго игрока
+      txt('СОПЕРНИК',820,150,22,'#ff5a4a');txt('манекен',820,330,30,'#bbb');
+      txt('стоит / сидит / блокирует —',820,366,14,'#999','center',true);txt('переключается в тренировке',820,384,14,'#999','center',true);continue;}
     const ai=pl===1&&G.mode===1,shown=!ai||G.ok[1],col=pl?'#ff5a4a':'#4aa8ff',c=CH[G.sel[pl]],cx=pl?820:140;
     txt(pl?(ai?'ИИ':'ИГРОК 2'):'ИГРОК 1',cx,150,22,col);
     if(!shown){txt('?',cx,340,120,'#444');continue;}
