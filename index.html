@@ -379,7 +379,7 @@ const HM_JAB=HS('jab',4,320,384,0,{hit:2}),HM_UP=HS('upper',5,204,418,0,{hit:3})
   HM_KNEE=HS('knee',5,302,384,0,{hit:2});
 CH.push({name:'HORSEMAN',body:'#b5651d',pants:'#4a6fa5',accent:'#e02020',glove:'#fff',speed:5.2,power:1.05,special:'ram',voice:true,run:1.8,
   feel:'КОНЬ — универсал: средняя скорость, длинные ноги, захват в воздухе',
-  sp:{n:'ram',d:'rise',b:'mule',g:'grab'},
+  sp:{n:'ram',d:'rise',b:'mule',g:'grab'},spn:{n:'таран ↑',d:'подъём ↑↑',b:'лягание →'},
   // ультра комбо: цепочка кнопок (повторяется по кругу), удары под каждую кнопку, добивание
   ultraSeq:['p1','p1','p2','k2','p1','k1','k2','k2','p2','k1'],ultraAn:{p1:['jab','cross'],p2:['hook','elbow','backfist'],k1:['hkick','sidekick'],k2:['kick','knee']},ultraFin:'round',
   // анимации: ключ — состояние (idle, walk, run, jump, crouch, block, cblock, hit_high/mid/low, chit, fall, down, win)
@@ -831,12 +831,14 @@ const TECH_WIN=10,BREAK_COST=50,DMG=.72;
 const DIFF=[['ЛЁГКИЙ',.12],['СРЕДНИЙ',.6],['СЛОЖНЫЙ',.8],['МАСТЕР',.95]];
 function throwable(o){return o.y>=GY&&!o.tInv&&['idle','walk','crouch','block','attack'].includes(o.state);}
 function startThrow(a,d){
+  if(G.tut)tutEv('throw',a,d);
   a.state='throw';a.thT=0;a.vx=0;a.buf=newBuf();
   d.state='thrown';d.vx=d.vy=0;d.crouching=false;d.facing=-a.facing;
   d.x=clamp(a.x+a.facing*52,AL,AR);
   hitstop=4;snd('block');
 }
 function techThrow(a,d){
+  if(G.tut)tutEv('tech',a,d);
   const dir=a.facing;
   for(const[f,s]of[[a,-dir],[d,dir]]){f.state='bstun';f.stateT=14;f.vx=s*8;f.buf=newBuf();f.crouching=false;f.tInv=10;}
   burst((a.x+d.x)/2,GY-110,'#ffffff',14,6);snd('block');hitstop=5;shake=Math.max(shake,5);
@@ -1009,6 +1011,7 @@ function bitePress(a,d,inp){
   }
 }
 function startGrab(a,d){
+  if(G.tut)tutEv('grab',a,d);
   if(a.ch.bite){startBite(a,d);return;}
   if(a.ch.rave){startRave(a,d);return;}
   if(d.state!=='hit'){a.combo=0;a.comboDmg=0;a.usedSp=[];d.jug=0;d.usedWB=d.usedGB=false;}
@@ -1117,6 +1120,9 @@ function resolveHit(a,d,m,dir,isProj,ender){
   if(guarding&&!canBlock){d.msg=m.type==='low'?'НИЗ!':'ОВЕРХЕД!';d.msgC='';d.msgT=frame+45;}
   if(!canBlock){d.hitLv=m.type==='low'?'low':m.type==='mid'?'mid':'high';d.anKey=null;}
   if(!isProj)a.res=1;
+  const tx=G.tut?{rec:d.state==='attack'&&!!d.move&&d.at>=d.move.su+d.move.ac,dazed:d.state==='hit'&&d.dazeT>0}:null; // для уроков обучения
+  if(canBlock&&G.tut)tutEv('block',a,d,m,tx);
+  if(!canBlock&&G.tut)tutEv('hit',a,d,m,tx);
   if(canBlock){
     // преимущество в блоке у каждого удара и серии своё: одни дают плюс, после других боец открыт
     const adv=advOf(isProj?'':a.seq,m,a.ch);
@@ -1455,7 +1461,7 @@ function world(live){
     // нажатия во время стоп-кадра не теряются
     if(live)F.forEach((f,i)=>{if(!f.cpu&&!f.dummy&&!(TUT.demo&&i===0&&G.mode>=3)){feed(f,IN[i]);qtePress(f,F[1-i],IN[i]);}});
   }else{
-    const ins=F.map((f,i)=>!live?EMPTY:TUT.demo&&i===0&&G.mode>=3?tutorInput(f,F[1]):f.dummy?DUMMY_IN[G.dummy||0]:f.cpu?aiInput(f,F[1-i]):IN[i]);
+    const ins=F.map((f,i)=>!live?EMPTY:TUT.demo&&i===0&&G.mode>=3?tutorInput(f,F[1]):f.dummy?(G.tut&&G.tut.din?G.tut.din(f,F[1-i]):DUMMY_IN[G.dummy||0]):f.cpu?aiInput(f,F[1-i]):IN[i]);
     const k=frame&1; // порядок хода чередуется каждый кадр — ни у одной стороны нет преимущества
     updF(F[k],F[1-k],ins[k]);updF(F[1-k],F[k],ins[1-k]);
     resolvePending();
@@ -1511,7 +1517,7 @@ function tick(net){
     G.mi=G.mi||0;
     if(n.uE||k('ArrowUp')){G.mi=(G.mi+MENU_BTN.length-1)%MENU_BTN.length;samp('ui_sel',.6,1,0);}
     if(n.dE||k('ArrowDown')){G.mi=(G.mi+1)%MENU_BTN.length;samp('ui_sel',.6,1,0);}
-    for(let d=1;d<=5;d++)if(k('Digit'+d)||k('Numpad'+d)){G.mi=MENU_BTN.findIndex(b=>b.act===d);G.mGo=10;snd('bell');}
+    for(let d=1;d<=6;d++)if(k('Digit'+d)){G.mi=MENU_BTN.findIndex(b=>b.act===d);G.mGo=10;snd('bell');} // только верхний ряд цифр: нампад — кнопки ударов
     if(!G.mGo&&(k('Enter')||k('Space')||p.fx||p.start||n.p1||G.mClick)){G.mGo=10;snd('bell');}
     G.mClick=false;
     return;
@@ -1530,6 +1536,7 @@ function tick(net){
     }
     if(G.mode===1&&G.ok[0]&&!G.ok[1]){{const pl=GRID.filter(c=>c>=0);G.sel[1]=pl[Math.random()*pl.length|0];}G.ok[1]=true;samp('ui_sel',.8,1,0);}
     if(G.mode===3&&G.ok[0]&&!G.ok[1]){G.ok[1]=true;G.sel[1]=G.sel[0];G.trainCh=G.sel[0];} // соперник в тренировке — манекен (выбирается сам)
+    if(G.ok[0]&&G.ok[1]&&G.mode===3&&G.tutPick&&++G.selT>20){G.arena=G.arena||0;startMatch();tutStart();return;} // обучение — сразу на арену
     if(G.ok[0]&&G.ok[1]&&++G.selT>(G.mode===3?20:40)){G.phase='stage';G.stRow=0;G.selT=0;}
     return;
   }
@@ -1551,7 +1558,7 @@ function tick(net){
     if(G.t>=70){G.phase='fight';G.t=0;snd('bell');}
   }else if(G.phase==='fight'){
     world(true);
-    if(G.mode===3)training();
+    if(G.mode===3){if(G.tut)lessonTick();else training();}
     else if(G.phase==='fight'&&--G.timer<=0){
       const a=F[0],b=F[1];
       endRound(a.hp>b.hp?a:b.hp>a.hp?b:null,true);
@@ -1589,6 +1596,7 @@ const ULT_WIN=150,ULT_N=60,ULT_GAP=3,ULT_FAST=30;
 const ultT=n=>Math.round(72-Math.min(n,ULT_FAST)*.8); // время на кнопку: 1,2 с в начале, 0,8 с к 30-му удару и дальше так же
 function finishUltra(U,ultra){
   const w=U.w,d=U.d,dir=w.facing;
+  if(G.tut)tutEv('ultra',w,d,null,U.n);
   w.state='idle';w.vx=0;
   d.state='ko';d.dazeT=0;d.y=Math.min(d.y,GY-1);d.vy=ultra?-15:-7;d.vx=dir*(ultra?9:5);d.flash=6;
   G.phase='ko';G.t=0;G.winner=w;G.timeout=false;G.ultraDone=ultra?w.combo:0;
@@ -1659,7 +1667,7 @@ const DEMO={n:0,t:0,kind:'',cap:'',endT:0};
 function demoAny(){
   return pressed.size>0||!!G.mClick||!!G.demoExit||[IN[0],IN[1],PAD[0],PAD[1]].some(o=>o&&Object.values(o).some(v=>v===true));
 }
-function demoStart(){G.mode=4;G.mIdle=0;DEMO.n=Math.random()*3|0;demoNext();}
+function demoStart(){G.tut=null;G.tutPick=false;G.mode=4;G.mIdle=0;DEMO.n=Math.random()*3|0;demoNext();}
 function demoNext(){
   const pl=GRID.filter(c=>c>=0),pick=a=>a[Math.random()*a.length|0];
   const kind=['combo','ultra','fight'][DEMO.n++%3];
@@ -1693,7 +1701,8 @@ function demoTick(){
 function menuDo(a){
   if(a===1){G.mode=1;toSelect();}
   else if(a===2){G.mode=2;toSelect();}
-  else if(a===3){G.mode=3;G.sel=[GRID.includes(G.trainCh)?G.trainCh:GRID[0],0];toSelect();} // тренировка: выбор бойца, потом арена
+  else if(a===3||a===6){ // тренировка: выбор бойца, потом арена; обучение: выбор бойца — и сразу уроки
+    G.mode=3;G.tut=null;G.tutPick=a===6;G.sel=[GRID.includes(G.trainCh)?G.trainCh:GRID[0],0];toSelect();}
   else if(a===4){G.phase='net';NET.ui='';NET.msg='';}
   else if(a===5){G.phase='keys';KS.tab=lastDev==='pad'?2:0;KS.row=0;KS.wait=false;KS.msg='';}
 }
@@ -1831,6 +1840,145 @@ function training(){
   if(pressed.has('Backspace')||PAD[0].start){TUT.demo=false;TUT.ps=0;startRound();G.log=[];return;}
   d.idleT=['hit','down','bstun'].includes(d.state)?0:(d.idleT||0)+1;
   if(d.idleT>45)d.hp=Math.min(100,d.hp+3);
+}
+
+// ---------- обучение ----------
+// Режим «Обучение»: игрок выбирает бойца, игра ведёт его по урокам — движение, удары, серии, блок (стоя / сидя / оверхед),
+// наказание, бросок и выход из него, спецприёмы, ошеломление, приём в воздухе, лёгкие комбо и животная ярость.
+// Построен на тренировке (манекен, бесконечное здоровье). Урок: t — название, txt() — строки подсказки, n — сколько раз
+// выполнить, tick() — проверка каждый кадр, ev() — проверка по событию (hit / block / grab / throw / tech / ultra),
+// din() — поведение манекена (например, атакует серией), combo — номер комбо из COMBOS (проверка — как в тренировке).
+const LESSON_STR={ // серии бойца для уроков (все есть в его таблице серий)
+  HORSEMAN:{s3:'p1,p1,p2',daze:'p2,p1,k1',low:'p1,p1,k1',over:'p1,p1,p1',pun:'p1,p1,p2,k1'},
+  LAMAGIRL:{s3:'p1,p1,k2',daze:'p2,k2,p1',low:'p1,p1,k1',over:'p2,p1,p2',pun:'p1,p1,k2,k2,p2'},
+  PITBULL:{s3:'p1,p1,p2',daze:'p2,p1,k1',low:'p1,p1,k2',over:'p1,p1,p1',pun:'p1,p1,p2,k2'}};
+const seqLb=s=>s.split(',').map(b=>ctlLabel(b)).join(' ');
+const FWl=()=>ctlLabel(F[0].facing>0?'r':'l'),BKl=()=>ctlLabel(F[0].facing>0?'l':'r');
+// манекен атакует серией: подходит, бьёт, продолжает серию по контакту (попадание или блок), пауза gap кадров
+function lessonAttacker(seq,gap){
+  const keys=seq.split(','),st={k:-1,key:null,wait:40};
+  return(f,o)=>{
+    const inp={},dist=Math.abs(o.x-f.x);
+    if(f.state==='attack'){
+      if(f.contactAt>=0&&st.k>=0&&st.k<keys.length-1&&st.key!==f.mname+f.seq){st.key=f.mname+f.seq;st.k++;inp[keys[st.k]]=1;}
+      return inp;
+    }
+    if(!FREE.includes(f.state)||f.y<GY)return inp;
+    if(dist>88){inp[o.x>f.x?'r':'l']=1;return inp;}
+    if(--st.wait>0||!FREE.includes(o.state)&&o.state!=='block')return inp;
+    st.k=0;st.key=null;st.wait=gap;inp[keys[0]]=1;return inp;
+  };
+}
+function lessonThrower(){
+  const st={wait:50};
+  return(f,o)=>{const inp={};if(!FREE.includes(f.state)||f.y<GY)return inp;
+    if(Math.abs(o.x-f.x)>62){inp[o.x>f.x?'r':'l']=1;return inp;}
+    if(--st.wait>0)return inp;st.wait=90;inp.s=1;inp.g=1;return inp;};
+}
+function buildLessons(ch,dch){
+  const l=ctlLabel,S=LESSON_STR[ch.name]||LESSON_STR.HORSEMAN,D=LESSON_STR[dch.name]||LESSON_STR.HORSEMAN,sp=ch.sp||{},spn=ch.spn||{};
+  const P=()=>F[0],combos=(COMBOS[ch.name]||[]).map((c,i)=>({c,i})).sort((a,b)=>a.c.hits-b.c.hits).slice(0,2);
+  const L=[
+    {t:'Движение',n:1,txt:()=>[`Иди вперёд ${FWl()} и назад ${BKl()}.`,'Боец всегда смотрит на соперника: «вперёд» — к нему, «назад» — от него.'],
+      prog:L=>`вперёд ${Math.min(100,L.a/1.4|0)}% · назад ${Math.min(100,L.b|0)}%`,
+      tick:L=>{const p=P();if(p.state==='walk'){const v=p.vx*p.facing;if(v>0)L.a+=v;else L.b-=v;}return L.a>=140&&L.b>=100;}},
+    {t:'Прыжок и присед',n:1,txt:()=>[`${l('u')} — прыжок, ${l('d')} — присесть.`+(ch.dj?` В прыжке ещё раз ${l('u')} — второй прыжок!`:''),
+        'Присед уводит от ударов сверху (В), прыжок — от ударов в ноги.'],
+      prog:L=>`прыжок ${L.j?'✓':'—'} · присед ${L.cr?'✓':'—'}`+(ch.dj?` · двойной прыжок ${L.dj?'✓':'—'}`:''),
+      tick:L=>{const p=P();if(p.y<GY-40)L.j=1;if(p.state==='crouch')L.cr=1;if(p.dj)L.dj=1;return L.j&&L.cr&&(!ch.dj||L.dj);}},
+    {t:'Бег и отскок',n:1,txt:()=>[`Держи ${l('run')} + ${FWl()} — бег к сопернику.`,`${l('run')} + ${BKl()} — отскок назад: уходит от броска, но на миг открыт.`],
+      prog:L=>`бег ${L.r>=25?'✓':'—'} · отскок ${L.bd?'✓':'—'}`,
+      tick:L=>{const p=P();if(p.running)L.r=(L.r||0)+1;if(p.state==='attack'&&p.mname==='backdash')L.bd=1;return L.r>=25&&L.bd;}},
+    {t:'Удары',n:1,txt:()=>[`Ударь манекен каждой кнопкой: ${l('p1')} и ${l('p2')} — руки, ${l('k1')} и ${l('k2')} — ноги.`,'Каждый удар бьёт на своей высоте: верх (В), середина (С), низ (Н), сверху (О).'],
+      prog:L=>BTN.map(b=>l(b)+(L.set&&L.set[b]?' ✓':' —')).join('  '),
+      ev:(L,ty,a,d)=>{if(ty!=='hit'||a!==P()||!a.seq||a.seq.includes(','))return false;(L.set=L.set||{})[a.seq]=1;return BTN.every(b=>L.set[b]);}},
+    {t:'Серия ударов',n:2,txt:()=>[`Серия — кнопки подряд, каждая следующая — в момент попадания: ${seqLb(S.s3)}`,'Не торопись и не долби: лишняя или запоздалая кнопка срывает серию.'],
+      ev:(L,ty,a)=>ty==='hit'&&a===P()&&a.seq===S.s3},
+    {t:'Блок',n:4,din:()=>lessonAttacker(D.s3,60),txt:()=>[`Соперник атакует. Держи ${l('blk')} — блок.`,'Блок стоя держит удары сверху (В), в середину (С) и оверхеды (О).'],
+      ev:(L,ty,a,d)=>ty==='block'&&d===P()},
+    {t:'Удар в ноги — блок сидя',n:2,din:()=>lessonAttacker(D.low,70),
+      txt:()=>[`Эта серия заканчивается ударом в ноги (Н) — блок стоя его не держит.`,`Держи ${l('blk')} + ${l('d')} — блок сидя. Заблокируй удар в ноги.`],
+      ev:(L,ty,a,d,m)=>ty==='block'&&d===P()&&m.type==='low'},
+    {t:'Оверхед — блок стоя',n:2,din:()=>lessonAttacker(D.over,70),
+      txt:()=>['А эта серия заканчивается ударом сверху (О) — его не держит блок сидя.',`Встань: ${l('blk')} без ${l('d')}. Концовки-миксапы медленные — смотри на замах и успевай.`],
+      ev:(L,ty,a,d,m)=>ty==='block'&&d===P()&&m.type==='over'},
+    {t:'Наказание после блока',n:2,din:()=>lessonAttacker(D.pun,80),
+      txt:()=>['Соперник заканчивает серию тяжёлым ударом — после него он долго открыт.',`Заблокируй всё и сразу бей (${l('p1')}): нажатие во время блока сработает, как только блок кончится.`],
+      ev:(L,ty,a,d,m,x)=>ty==='hit'&&a===P()&&x&&x.rec},
+    {t:'Бросок',n:1,dummy:2,txt:()=>['Манекен стоит в блоке — удары он держит.',`Подойди вплотную и нажми ${l('g')} — бросок пробивает блок.`],
+      ev:(L,ty,a)=>ty==='throw'&&a===P()},
+    {t:'Выход из броска',n:1,din:()=>lessonThrower(),txt:()=>['Теперь тебя бросают.',`Как только соперник схватил — сразу жми ${l('g')}: вырвешься без урона.`],
+      ev:(L,ty,a,d)=>ty==='tech'&&d===P()},
+    {t:'Спецприёмы',n:1,txt:()=>[`Спецприём тратит четверть шкалы энергии (синяя полоска под здоровьем).`,
+        `${l('s')} — ${spn.n||sp.n} · ${l('d')} + ${l('s')} — ${spn.d||sp.d} · ${BKl()} + ${l('s')} — ${spn.b||sp.b}`],
+      prog:L=>['n','d','b'].map(k=>(spn[k]||sp[k]||k).split(' ')[0]+(L.set&&L.set[k]?' ✓':' —')).join('  '),
+      tick:L=>{const p=P();if(p.state!=='attack')return false;
+        for(const k of['n','d','b']){const nm=sp[k],m=M[nm];if(nm&&p.mname===nm&&(p.contactAt>=0||!m.dmg||m.proj))(L.set=L.set||{})[k]=1;}
+        return L.set&&L.set.n&&L.set.d&&L.set.b;}},
+    {t:'Ошеломление',n:1,txt:()=>[`Серия ${seqLb(S.daze)} ошеломляет: соперник шатается, над головой звёзды.`,'Пока он шатается — начни новую серию. Раз за комбо.'],
+      prog:L=>`ошеломил ${L.dz?'✓':'—'} · добил ошеломлённого ${L.c?'✓':'—'}`,
+      ev:(L,ty,a,d,m,x)=>{if(ty!=='hit'||a!==P())return false;if(m.daze)L.dz=1;else if(L.dz&&x&&x.dazed)return true;return false;}},
+    {t:ch.rave?'Воздушная серия':ch.bite?'Мёртвая хватка':'Захват в воздухе',n:1,
+      txt:()=>ch.bite?[`Ошеломи (${seqLb(S.daze)}) или подбрось (${seqLb(S.pun)}) — и сразу ${l('g')}: хватка.`,'Тряси стрелками ← → по очереди, потом жми кнопки на экране.']
+        :[`Подбрось соперника серией ${seqLb(S.pun)} и в воздухе нажми ${l('g')}.`,'Дальше жми кнопки, которые появятся на экране, — каждая верная кнопка добавляет удар.'],
+      ev:(L,ty,a)=>{if(ty==='grab'&&a===P()){L.g=1;L.c0=a.combo;}return false;},
+      tick:L=>L.g&&P().combo>=L.c0+3},
+    ...combos.map(({c,i},k)=>({t:'Комбо: '+c.n,n:1,combo:i,txt:()=>[`Комбо из ${c.hits} ударов — шаги слева. Шаг загорается, когда выполнен.`,'X — показать, как это делается.']})),
+    {t:'Животная ярость',n:1,txt:()=>[`Решающий нокаут: соперник шатается. Нажми ${l('s')} — начнётся животная ярость.`,'Дальше жми кнопки цепочки по порядку (подсказка вверху). Сделай 10 ударов.'],
+      setup:L=>{const d=F[1];d.state='hit';d.dazeT=d.stateT=99;G.phase='ultra';G.t=0;G.ultra={w:F[0],d,run:false,n:0,t:0,train:true};},
+      tick:L=>{if(G.phase==='fight'&&++L.w>45)lessonSetup();return false;},
+      ev:(L,ty,a,d,m,x)=>ty==='ultra'&&a===P()&&x>=10}
+  ];
+  return L;
+}
+function tutStart(){G.tut={i:0,L:buildLessons(F[0].ch,F[1].ch),okT:0,lastDone:0};lessonSetup();}
+function lessonSetup(){
+  const T=G.tut,L=T.L[T.i];startRound();G.log=[];
+  TUT.i=L&&L.combo!==undefined?L.combo:-1;TUT.ps=0;TUT.demo=false;TUT.doneT=0;
+  if(!L)return;
+  for(const k of['c','a','b','j','cr','dj','r','bd','set','dz','g','c0','w','demo'])delete L[k];L.c=0;L.a=0;L.b=0;L.w=0;
+  G.dummy=L.dummy||0;T.din=L.din?L.din():null;
+  if(L.setup)L.setup(L);
+}
+function lessonNext(){const T=G.tut;T.i++;T.okT=0;lessonSetup();if(T.i>=T.L.length)snd('bell');}
+function lessonAdd(){const T=G.tut,L=T.L[T.i];if(!L)return;L.c=Math.min(L.n,(L.c||0)+1);if(L.c>=L.n&&!T.okT){T.okT=90;snd('bell');}}
+function tutEv(ty,a,d,m,x){const T=G.tut;if(!T||T.okT||G.mode!==3)return;const L=T.L[T.i];if(L&&L.ev&&L.ev(L,ty,a,d,m,x))lessonAdd();}
+function lessonTick(){
+  const T=G.tut,L=T.L[T.i],P=F[0],D=F[1];
+  if(!L){ // всё пройдено
+    if(pressed.has('Enter')||PAD[0].start){G.tut=null;G.trainCh=G.sel[0];startRound();snd('bell');}
+    return;
+  }
+  P.energy=100;P.hp=100;if(G.phase==='fight')D.hp=100;
+  if(T.okT){if(--T.okT===0)lessonNext();return;}
+  if(pressed.has('Tab')||PAD[0].list){lessonNext();return;}
+  if(pressed.has('Backspace')||PAD[0].start){lessonSetup();return;}
+  if(L.tick&&L.tick(L))lessonAdd();
+  if(L.combo!==undefined){
+    pressed.delete('KeyC');PAD[0].combo=false;tutTrack();
+    if(TUT.demo)L.demo=true;else if(TUT.ps===1)L.demo=false; // показ ботом не засчитывается
+    if(TUT.doneT>frame&&T.lastDone!==TUT.doneT){T.lastDone=TUT.doneT;if(!L.demo)lessonAdd();}
+  }
+}
+function drawLesson(){
+  const T=G.tut,L=T.L[T.i];
+  if(!L){
+    ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(W/2-300,150,600,150);
+    txt('ОБУЧЕНИЕ ПРОЙДЕНО!',W/2,205,46,'#7dff8a');
+    txt('Enter / Options — тренировка этим бойцом · Esc / Create — меню',W/2,250,16,'#fff','center',true);
+    txt('В тренировке: Tab — список всех приёмов, C — все комбо бойца',W/2,276,14,'#bbb','center',true);
+    return;
+  }
+  if(G.phase==='ultra'||G.phase==='ko'){txt(`УРОК ${T.i+1} / ${T.L.length}: ${L.t}`,W/2,92,16,'#ffd24a');return;}
+  const lines=L.txt(L),h=46+lines.length*22+26;
+  ctx.fillStyle='rgba(0,0,0,.62)';ctx.fillRect(W/2-340,96,680,h);
+  ctx.strokeStyle='rgba(255,210,74,.6)';ctx.lineWidth=2;ctx.strokeRect(W/2-340,96,680,h);
+  txt(`УРОК ${T.i+1} / ${T.L.length}: ${L.t.toUpperCase()}`,W/2,126,24,'#ffd24a');
+  lines.forEach((s,i)=>txt(s,W/2,152+i*22,15,'#fff','center',true));
+  txt(L.prog?L.prog(L):`${L.c||0} / ${L.n}`,W/2,152+lines.length*22+8,16,'#9fd8ff','center',true);
+  if(T.okT)txt('ОТЛИЧНО!',W/2,330,64,'#7dff8a');
+  if(L.combo!==undefined)drawTutor();
+  txt('Tab / тачпад — пропустить урок · Backspace / Options — заново · Esc / Create — меню'+(L.combo!==undefined?' · X — показать':''),W-20,H-10,12,'#999','right',true);
 }
 
 function musicKey(){if(pressed.has('KeyM'))musicOff=!musicOff;musicSync();}
@@ -2466,7 +2614,7 @@ function hud(){
       txt(`урон ${f.comboDmg.toFixed(0)}%`,L?52:W-52,186,18,'#fff',L?'left':'right');
     }
   }
-  if(G.mode===3){txt('∞',W/2,58,44,'#fff');drawTraining();}
+  if(G.mode===3){txt('∞',W/2,58,44,'#fff');if(G.tut)drawLesson();else drawTraining();}
   else txt(String(Math.max(0,Math.ceil(G.timer/60))),W/2,56,40,G.timer<600?'#ff5a4a':'#fff');
 }
 function drawQTE(f){
@@ -2514,9 +2662,25 @@ function drawTraining(){
 // фон 1920×1080 рисуется на весь экран (k=0.5); поверх — живые детали: мерцание фонарей, пар из люка, огонь в бочке,
 // капли крови с логотипа, дождь и крыса, которая иногда перебегает улицу. Кнопки — готовые картинки (обычная / наведена / нажата).
 const MENU_BG=imgOf('assets/menu_bg.jpg'),RAT=sheet('assets/menu_rat.png',8,374,167,18,{});
-const MENU_BTN=[['player_vs_ai',1],['player_vs_player',2],['online',4],['training',3],['controls',5]].map(([id,act])=>
-  ({id,act,img:{n:imgOf(`assets/ui/${id}_normal.png`),h:imgOf(`assets/ui/${id}_hover.png`),a:imgOf(`assets/ui/${id}_active.png`)}}));
-const MB={x:30,y:150,w:370,h:53,step:64}; // кнопки на экране
+const MENU_BTN=[['player_vs_ai',1],['player_vs_player',2],['online',4],['tutorial',6],['training',3],['controls',5]].map(([id,act])=>
+  ({id,act,img:id==='tutorial'?{}:{n:imgOf(`assets/ui/${id}_normal.png`),h:imgOf(`assets/ui/${id}_hover.png`),a:imgOf(`assets/ui/${id}_active.png`)}}));
+const MB={x:30,y:140,w:370,h:50,step:58}; // кнопки на экране
+// кнопка «Обучение» рисуется из кнопки «Тренировка»: надпись закрывается полосатым фоном, иконка — знак вопроса
+function menuTutorImgs(){
+  const b=MENU_BTN.find(b=>b.id==='tutorial'),src=MENU_BTN.find(b=>b.id==='training').img;
+  if(b.img.n||!['n','h','a'].every(k=>imgOk(src[k])))return;
+  for(const k of['n','h','a']){
+    const s=src[k],c=document.createElement('canvas');c.width=s.naturalWidth;c.height=s.naturalHeight;
+    const x=c.getContext('2d'),h=c.height;x.drawImage(s,0,0);
+    for(const dx of[172,372])x.drawImage(s,580,14,200,h-28,dx,14,200,h-28); // полосы справа — поверх старой надписи
+    const px=x.getImageData(34,40,1,1).data;x.fillStyle=`rgb(${px[0]},${px[1]},${px[2]})`;x.fillRect(32,26,118,h-52); // пустая иконка
+    const col=k==='a'?'#f0dcc4':'#d6cbb5';
+    x.font='bold 64px "Times New Roman",Georgia,serif';x.textBaseline='middle';
+    x.fillStyle='rgba(0,0,0,.75)';x.fillText('?',76,h/2+5);x.fillText('Обучение',196,h/2+5);
+    x.fillStyle=col;x.fillText('?',73,h/2+2);x.fillText('Обучение',193,h/2+2);
+    b.img[k]=c;
+  }
+}
 const MFX={steam:[],fire:[],drips:[],rain:[],rat:{x:0,dir:1,on:false,wait:120}};
 const MLAMP=[{x:690,y:214,r:170,c:'255,205,130',a:.22,b:.006},{x:597,y:498,r:80,c:'255,195,120',a:.2,b:.01},{x:547,y:290,r:70,c:'255,40,50',a:.25,b:.03}];
 const MDRIP=[[1183,598],[1236,580],[1300,602],[1588,612],[1652,600],[1268,742],[1300,728],[1560,724],[1540,806]];
@@ -2582,12 +2746,13 @@ function drawMenuScene(){
   ctx.restore();
 }
 function drawMenu(){
+  menuTutorImgs();
   MENU_BTN.forEach((b,i)=>{
     const sel=i===(G.mi||0),im=sel?(G.mGo>0?b.img.a:b.img.h):b.img.n,y=MB.y+i*MB.step,x=MB.x+(sel?8:0);
-    if(imgOk(im))ctx.drawImage(im,x,y,MB.w,MB.h);else{ctx.fillStyle='#222';ctx.fillRect(x,y,MB.w,MB.h);}
+    if(im&&(im instanceof HTMLCanvasElement||imgOk(im)))ctx.drawImage(im,x,y,MB.w,MB.h);else{ctx.fillStyle='#222';ctx.fillRect(x,y,MB.w,MB.h);}
   });
   const pi=padInfo()[0];
-  txt('↑ ↓ — выбор · ✕ / Enter — выбрать · 1–5 — сразу · мышь тоже работает',MB.x+4,MB.y+MENU_BTN.length*MB.step+14,13,'#ccc','left',true);
+  txt('↑ ↓ — выбор · ✕ / Enter — выбрать · 1–6 — сразу · мышь тоже работает',MB.x+4,MB.y+MENU_BTN.length*MB.step+14,13,'#ccc','left',true);
   txt('Геймпад: '+pi,MB.x+4,MB.y+MENU_BTN.length*MB.step+32,12,/игрок/.test(pi)?'#7dff8a':'#999','left',true);
 }
 // мышь в меню: наведение подсвечивает кнопку, клик — выбирает
@@ -2655,7 +2820,7 @@ function drawSelect(){
   txt('ВЫБОР БОЙЦА',W/2,60,44,'#ffd24a');
   if(NET.on)txt('Игра по сети · ты — '+(NET.me?'P2 (красная рамка)':'P1 (синяя рамка)'),W/2,88,16,'#7dff8a','center',true);
   else if(G.mode===1)txt('Против компьютера · сложность — на следующем экране',W/2,88,16,'#ffd24a','center',true);
-  else if(G.mode===3)txt('ТРЕНИРОВКА · выбери бойца, затем арену',W/2,88,16,'#7dff8a','center',true);
+  else if(G.mode===3)txt(G.tutPick?'ОБУЧЕНИЕ · выбери бойца — игра научит всему за него':'ТРЕНИРОВКА · выбери бойца, затем арену',W/2,88,16,'#7dff8a','center',true);
   for(let s=0;s<6;s++){
     const{x,y,w,h}=SLOT(s),ci=GRID[s],im=SELP[ci];
     if(imgOk(im))ctx.drawImage(im,x,y,w,h);
