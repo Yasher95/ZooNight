@@ -12,7 +12,9 @@ const APP_ID = 480;
   fs.copyFileSync(path.join(ROOT, 'index.html'), path.join(GAME, 'index.html'));
   fs.cpSync(path.join(ROOT, 'assets'), path.join(GAME, 'assets'), { recursive: true });
 
-  fs.rmSync(DIST, { recursive: true, force: true });
+  // чистим только свою папку сборки (в dist может лежать распакованная и запущенная копия игры)
+  fs.mkdirSync(DIST, { recursive: true });
+  fs.rmSync(path.join(DIST, 'ZooNight-win32-x64'), { recursive: true, force: true });
   const [out] = await packager({
     dir: __dirname, out: DIST, name: 'ZooNight', platform: 'win32', arch: 'x64', overwrite: true, asar: false, prune: true,
     ignore: [/^\/dist($|\/)/, /^\/build\.js$/, /^\/README/],

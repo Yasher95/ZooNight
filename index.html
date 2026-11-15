@@ -1867,6 +1867,7 @@ function netApply(js){
   projs=s.projs.map(p=>{p.owner=F[p.owner];return p;});
   frame=s.frame;hitstop=s.hitstop;camX=s.camX;PEND=[];
   NET.f=s.f;NET.sums={};NET.resync++;
+  if(G.phase==='end'&&!VID.el){const w=F.find(f=>f.wins>=2);if(w)vidStart(w.ch);} // синхронизация пришла на экран победы — ролик
 }
 function netData(d){
   const N=NET;
