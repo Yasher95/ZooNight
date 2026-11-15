@@ -1797,6 +1797,13 @@ function musicKey(){if(pressed.has('KeyM'))musicOff=!musicOff;musicSync();}
 // с задержкой D кадров — за это время он успевает дойти до соперника, поэтому условия у обоих одинаковые.
 // Раз в полсекунды сверяется контрольная сумма; при расхождении хозяин комнаты присылает своё состояние целиком.
 const NET={on:false,me:0,f:0,D:3,next:0,loc:{},rem:{},sums:{},peer:null,conn:null,ui:'',code:'',msg:'',wait:0,ping:0,resync:0,lastSnap:-999,pings:[]};
+// сетевой журнал: шаги подключения видны на экране сети, L — скопировать весь журнал (прислать для разбора)
+const NLOG=[],NLOG_T0=performance.now();let nlogMsg='';
+function nlog(s){NLOG.push(((performance.now()-NLOG_T0)/1000).toFixed(1)+'с '+s);if(NLOG.length>80)NLOG.shift();try{console.log('[net]',s);}catch(e){}}
+function nlogCopy(){
+  const head=`ZOO NIGHT ${window.steamNet?'Steam':'браузер'} · ${navigator.userAgent.replace(/^.*?\) /,'')} · ui=${NET.ui} via=${NET.via||'-'} on=${NET.on} f=${NET.f} wait=${NET.wait}`;
+  try{navigator.clipboard.writeText(head+'\n'+NLOG.join('\n'));NET.msg='Журнал скопирован — пришли его (Ctrl+V)';}catch(e){}
+}
 const NK=['l','r','u','d','blk','run','g','p1','p2','k1','k2','s','uE','dE','lE','rE','start'];
 const netPack=o=>NK.reduce((m,k,i)=>m|(o[k]?1<<i:0),0);
 const netUnpack=m=>{const o={};NK.forEach((k,i)=>{o[k]=!!(m>>i&1);});return o;};
@@ -1820,10 +1827,11 @@ function netFrame(){
   const N=NET;
   musicKey();
   if(pressed.has('Escape')){netClose('');G.phase='menu';pressed.clear();return true;}
+  if(pressed.has('KeyL'))nlogCopy();
   let steps=N.rem[N.f+N.D+2]!==undefined?2:1; // отстали от соперника — догоняем двумя кадрами за раз
   while(steps--){
     while(N.next<=N.f+N.D){const v=netLocal();N.loc[N.next]=v;netSend({i:[N.next,v]});N.next++;}
-    if(N.f>=N.D&&N.rem[N.f]===undefined){N.wait++;return false;}
+    if(N.f>=N.D&&N.rem[N.f]===undefined){if(++N.wait===120)nlog('ждём ввод соперника 2 с (кадр '+N.f+', '+G.phase+')');return false;}
     N.wait=0;
     const mine=netUnpack(N.loc[N.f]||0),his=netUnpack(N.rem[N.f]||0);
     tick(N.me?[his,mine]:[mine,his]);
@@ -1868,11 +1876,11 @@ function netData(d){
     if(N.sums[f]===undefined)N.sums[f]=c;      // до этого кадра ещё не дошли — сверим, когда дойдём
     else if(N.sums[f]!==c)netDesync();
   }
-  else if(d.need){if(!N.me)netDesync();}
-  else if(d.snap){if(N.me)netApply(d.snap);}
-  else if(d.ping!==undefined){N.gotPing=true;netSend({pong:d.ping});}
+  else if(d.need){nlog('соперник просит синхронизацию');if(!N.me)netDesync();}
+  else if(d.snap){nlog('получен снимок состояния');if(N.me)netApply(d.snap);}
+  else if(d.ping!==undefined){if(!N.gotPing)nlog('получен замер связи от хозяина');N.gotPing=true;netSend({pong:d.ping});}
   else if(d.pong!==undefined){
-    N.pings.push(performance.now()-d.pong);
+    N.pings.push(performance.now()-d.pong);nlog('замер '+N.pings.length+'/5: '+Math.round(N.pings[N.pings.length-1])+' мс');
     if(N.pings.length<5)setTimeout(()=>netSend({ping:performance.now()}),60);
     else if(!N.on){
       N.ping=Math.round(Math.min(...N.pings));
@@ -1883,6 +1891,7 @@ function netData(d){
   else if(d.start){N.ping=d.start[1];netBegin(d.start[0],1);}
 }
 function netBegin(D,me){
+  nlog(`СТАРТ игры: я ${me?'гость':'хозяин'}, канал ${NET.via||'?'}, пинг ${NET.ping} мс, задержка ${D} кадр.`);
   Object.assign(NET,{on:true,me,D,f:0,next:0,loc:{},rem:{},sums:{},wait:0,resync:0,lastSnap:-999});
   frame=0;hitstop=0;F=[];projs=[];parts=[];PEND=[];
   const hm=CH.findIndex(c=>c.name==='HORSEMAN');
@@ -1893,11 +1902,12 @@ function netClose(msg){
   const N=NET;
   clearInterval(N.helloT);
   try{if(N.conn)N.conn.close();}catch(e){}
-  try{if(N.relay&&N.relay!==N.conn)N.relay.close();}catch(e){}
+  for(const r of N.relays||[])try{if(r!==N.conn)r.close();}catch(e){}
   try{if(N.peer)N.peer.destroy();}catch(e){}
   if(window.steamNet&&(N.via==='steam'||N.ui==='shost'||N.ui==='sjoin'))steamNet.leave();
+  if(msg||N.on||N.ui)nlog('закрыто'+(msg?': '+msg:''));
   const was=N.on;
-  Object.assign(N,{on:false,peer:null,conn:null,relay:null,via:'',ui:'',pings:[],msg:msg||''});
+  Object.assign(N,{on:false,peer:null,conn:null,relays:[],via:'',ui:'',pings:[],msg:msg||''});
   if(was&&msg){G.phase='net';}
 }
 function netLib(cb){
@@ -1920,56 +1930,63 @@ const RTC_WAIT=8000; // столько ждём прямое соединени�
 function netWire(conn,host){
   NET.conn=conn;NET.via='direct';
   conn.on('data',netData);
+  conn.on('open',()=>nlog('прямое соединение открыто'));
   conn.on('close',()=>{if(NET.conn===conn)netClose('Соперник отключился');});
-  conn.on('error',()=>{if(NET.conn===conn&&NET.on)netClose('Ошибка соединения');});
+  conn.on('error',e=>{nlog('ошибка прямого соединения: '+(e&&e.type||e));if(NET.conn===conn&&NET.on)netClose('Ошибка соединения');});
   // прямое соединение не установилось — гость переходит на ретранслятор, хозяин просто ждёт его там
-  const t0=performance.now();
+  const t0=performance.now();let lastSt='';
   const iv=setInterval(()=>{
     if(NET.conn!==conn||NET.on||conn.open){clearInterval(iv);return;}
     const pc=conn.peerConnection,st=pc?pc.iceConnectionState:'';
+    if(st!==lastSt){nlog('прямое: ICE '+(st||'нет')+(host?' (у хозяина)':''));lastSt=st;}
     if(st==='failed'||performance.now()-t0>RTC_WAIT){
-      clearInterval(iv);NET.conn=null;try{conn.close();}catch(e){}
+      clearInterval(iv);nlog('прямое соединение не вышло');NET.conn=null;try{conn.close();}catch(e){}
       if(!host)relayJoin(NET.code);
     }else if(!host)NET.msg='Устанавливаем прямое соединение… '+Math.round((performance.now()-t0)/1000)+' с';
   },500);
 }
 
-// ---------- запасной канал: публичный ретранслятор MQTT (WebSocket по https) ----------
+// ---------- запасной канал: публичные ретрансляторы MQTT (WebSocket по https) ----------
 // Работает в любой сети (идёт как обычный веб-трафик), задержка чуть больше, чем у прямого соединения.
-// Хозяин слушает тему zoonight/КОД/h, гость — zoonight/КОД/g. Гость шлёт hello, пока хозяин не ответит замером связи.
+// И хозяин, и гость подключаются ко ВСЕМ ретрансляторам сразу (иначе, если у одного первый сервер недоступен,
+// они окажутся на разных и не встретятся). Хозяин слушает zoonight/КОД/h, гость — zoonight/КОД/g.
+// Гость шлёт hello во все, хозяин отвечает замером связи через тот, куда hello пришёл первым, — дальше игра идёт через него.
 const MQ_URLS=['wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081','wss://broker.emqx.io:8084/mqtt']; // по задержке: ~70, ~85, ~360 мс
+const mqName=i=>MQ_URLS[i].split('/')[2].split(':')[0];
 function mqLib(cb,fail){
   if(window.mqtt)return cb();
   const s=document.createElement('script');
   s.src='https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js';
-  s.onload=()=>cb();s.onerror=()=>fail();
+  s.onload=()=>cb();s.onerror=()=>{nlog('не загрузилась библиотека MQTT (unpkg.com)');fail();};
   document.head.appendChild(s);
 }
-// канал ретранслятора с тем же видом, что у PeerJS: open, send, close, on('data'|'close')
-function relayOpen(code,side,ready,fail,url){
+// один ретранслятор: канал с тем же видом, что у PeerJS (open, send, close, on('data'|'close'))
+function relayConnect(code,side,i,ready,fail){
   mqLib(()=>{
-    let i=url||0,done=false;
+    let done=false;
     const tIn='zoonight/'+code+'/'+side,tOut='zoonight/'+code+'/'+(side==='h'?'g':'h');
-    const cl=mqtt.connect(MQ_URLS[i],{connectTimeout:5000,reconnectPeriod:0,clean:true,clientId:'zn_'+Math.random().toString(36).slice(2,10)});
-    const c={open:false,relay:true,url:i,h:{},on(e,f){this.h[e]=f;},
+    let cl;try{cl=mqtt.connect(MQ_URLS[i],{connectTimeout:8000,reconnectPeriod:0,clean:true,clientId:'zn_'+Math.random().toString(36).slice(2,10)});}catch(e){nlog(mqName(i)+': '+e);return fail();}
+    const c={open:false,relay:true,url:i,name:mqName(i),h:{},on(e,f){this.h[e]=f;},
       send(o){if(this.open)cl.publish(tOut,JSON.stringify(o));},
-      close(){const was=this.open;this.open=false;this.h={};try{cl.end(true);}catch(e){}}};
-    cl.on('connect',()=>cl.subscribe(tIn,{qos:0},err=>{if(err||done)return;done=true;c.open=true;ready(c);}));
+      close(){this.open=false;this.h={};try{cl.end(true);}catch(e){}}};
+    cl.on('connect',()=>cl.subscribe(tIn,{qos:0},err=>{if(err||done)return;done=true;c.open=true;nlog('ретранслятор '+c.name+' подключён');ready(c);}));
     cl.on('message',(t,m)=>{let d;try{d=JSON.parse(m.toString());}catch(e){return;}if(c.h.data)c.h.data(d);});
-    cl.on('close',()=>{if(c.open){c.open=false;if(c.h.close)c.h.close();}});
-    cl.on('error',()=>{});
-    setTimeout(()=>{if(!done){done=true;try{cl.end(true);}catch(e){}if(i+1<MQ_URLS.length)relayOpen(code,side,ready,fail,i+1);else fail();}},6000);
+    cl.on('close',()=>{if(c.open){c.open=false;nlog('ретранслятор '+c.name+' отключился');if(c.h.close)c.h.close();}});
+    cl.on('error',e=>nlog('ретранслятор '+c.name+': '+(e&&e.message||e)));
+    setTimeout(()=>{if(!done){done=true;nlog('ретранслятор '+c.name+' не отвечает');try{cl.end(true);}catch(e){}fail();}},9000);
   },fail);
 }
-// хозяин: слушает ретранслятор с момента создания комнаты
+// хозяин: слушает все ретрансляторы с момента создания комнаты
 function relayHost(code){
-  relayOpen(code,'h',c=>{
+  NET.relays=[];
+  MQ_URLS.forEach((u,i)=>relayConnect(code,'h',i,c=>{
     if(NET.ui!=='host'||NET.code!==code){c.close();return;}
-    NET.relay=c;
+    NET.relays.push(c);
     c.on('data',d=>{
       if(d.hello){
-        if(NET.on||NET.conn===c)return; // уже играем / замер уже идёт
-        if(NET.conn&&NET.conn.open)return; // прямое соединение уже есть
+        if(NET.on||NET.conn===c)return;            // уже играем / замер уже идёт здесь
+        if(NET.conn&&(NET.conn.open||NET.conn.relay))return; // есть прямое соединение или замер через другой ретранслятор
+        nlog('гость постучался через '+c.name);
         const old=NET.conn;NET.conn=null;try{if(old)old.close();}catch(e){}
         NET.conn=c;NET.via='relay';
         c.on('close',()=>{if(NET.conn===c)netClose('Соперник отключился');});
@@ -1978,62 +1995,74 @@ function relayHost(code){
       }
       if(NET.conn===c)netData(d);
     });
-  },()=>{});
+  },()=>{}));
 }
-// гость: прямое соединение не вышло — через ретранслятор
+// гость: прямое соединение не вышло — через ретрансляторы (во все сразу)
 function relayJoin(code){
   if(NET.on||NET.ui!=='joining'||NET.rj)return;
   NET.rj=true; // переход на ретранслятор — один раз
-  NET.msg='Прямое соединение не прошло — подключаемся через ретранслятор…';
-  relayOpen(code,'g',c=>{
+  NET.msg='Прямое соединение не прошло — подключаемся через ретранслятор…';nlog('гость: пробуем ретрансляторы');
+  NET.relays=[];let failed=0;const t0=performance.now();
+  MQ_URLS.forEach((u,i)=>relayConnect(code,'g',i,c=>{
     if(NET.on||NET.ui!=='joining'){c.close();return;}
-    NET.conn=c;NET.via='relay';
-    c.on('data',netData);
-    c.on('close',()=>{if(NET.conn===c)netClose('Соединение с ретранслятором потеряно');});
-    const t0=performance.now();
+    NET.relays.push(c);
+    c.on('data',d=>{
+      if(d.ping!==undefined&&!NET.conn){ // хозяин ответил здесь — играем через этот ретранслятор
+        nlog('хозяин ответил через '+c.name);
+        NET.conn=c;NET.via='relay';
+        for(const o of NET.relays)if(o!==c)o.close();NET.relays=[c];
+        c.on('close',()=>{if(NET.conn===c)netClose('Соединение с ретранслятором потеряно');});
+      }
+      if(NET.conn===c)netData(d);
+    });
     c.send({hello:1});
-    clearInterval(NET.helloT);
-    NET.helloT=setInterval(()=>{
-      if(NET.on||NET.conn!==c||NET.gotPing){clearInterval(NET.helloT);return;}
-      if(performance.now()-t0>12000){clearInterval(NET.helloT);netClose('Комната '+code+' не отвечает — проверь код и что друг ждёт в комнате');G.phase='net';return;}
-      c.send({hello:1});
-    },1000);
-  },()=>{netClose('Не удалось подключиться ни напрямую, ни через ретранслятор — нужен интернет');G.phase='net';});
+  },()=>{if(++failed>=MQ_URLS.length){nlog('ни один ретранслятор не доступен');netClose('Ретрансляторы недоступны — проверь интернет / VPN');G.phase='net';}}));
+  clearInterval(NET.helloT);
+  NET.helloT=setInterval(()=>{
+    if(NET.on||NET.gotPing||NET.ui!=='joining'){clearInterval(NET.helloT);return;}
+    if(performance.now()-t0>20000){clearInterval(NET.helloT);nlog('хозяин не ответил за 20 с');netClose('Комната '+code+' не отвечает — проверь код и что друг ждёт в комнате');G.phase='net';return;}
+    for(const c of NET.relays)c.send({hello:1});
+    if(NET.relays.length)NET.msg='Ретрансляторов на связи: '+NET.relays.length+' — ждём ответ хозяина…';
+  },1000);
 }
 function netHost(){
-  NET.ui='host';NET.code='';NET.msg='';
+  NET.ui='host';NET.code='';NET.msg='';nlog('создаём комнату');
   netLib(()=>{
     const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code='';for(let i=0;i<5;i++)code+=A[Math.random()*A.length|0];
     const peer=NET.peer=new Peer(NET_ID+code,NET_CFG);
-    peer.on('open',()=>{NET.code=code;relayHost(code);});
+    peer.on('open',()=>{NET.code=code;nlog('комната '+code+' создана (PeerJS)');relayHost(code);});
     peer.on('connection',conn=>{
+      nlog('гость пробует прямое соединение');
       if(NET.conn||NET.on){conn.close();return;} // комната на двоих
       netWire(conn,true);
       conn.on('open',()=>{if(NET.conn!==conn)return;NET.msg='Соперник подключился, замер связи…';NET.pings=[];netSend({ping:performance.now()});});
     });
     peer.on('error',e=>{
+      nlog('PeerJS (хозяин): '+e.type);
       if(e.type==='unavailable-id'){peer.destroy();netHost();}
       else if(!NET.on&&!NET.code){NET.ui='';NET.msg='Сервер комнат недоступен: '+e.type;}
     });
   });
 }
 function netJoin(code){
-  NET.ui='joining';NET.code=code;NET.gotPing=false;NET.rj=false;NET.via='';NET.msg='Подключение к комнате '+code+'…';
+  NET.ui='joining';NET.code=code;NET.gotPing=false;NET.rj=false;NET.via='';NET.msg='Подключение к комнате '+code+'…';nlog('входим в комнату '+code);
   netLib(()=>{
     const peer=NET.peer=new Peer(NET_CFG);
     peer.on('open',()=>{
       if(NET.ui!=='joining'||NET.conn)return;
+      nlog('PeerJS (гость) на связи, стучимся к хозяину');
       const conn=peer.connect(NET_ID+code,{reliable:true});
       netWire(conn,false);
       conn.on('open',()=>{if(NET.conn===conn)NET.msg='Комната найдена, замер связи…';});
     });
     peer.on('error',e=>{
+      nlog('PeerJS (гость): '+e.type);
       if(NET.on)return;
       relayJoin(code); // сервер комнат недоступен или не нашёл комнату — пробуем ретранслятор
     });
   });
-  setTimeout(()=>{if(!NET.on&&NET.ui==='joining'&&!NET.conn&&!window.Peer)relayJoin(code);},6000); // библиотека не загрузилась
+  setTimeout(()=>{if(!NET.on&&NET.ui==='joining'&&!NET.conn&&!window.Peer){nlog('PeerJS не загрузился');relayJoin(code);}},6000); // библиотека не загрузилась
 }
 // ввод кода комнаты с клавиатуры
 addEventListener('keydown',e=>{
@@ -2055,18 +2084,18 @@ if(STEAM.on){
   steamNet.onData((from,str)=>{
     let d;try{d=JSON.parse(str);}catch(e){return;}
     const c=NET.conn;
-    if(d.hello){if(NET.ui==='shost'&&!NET.on&&!(c&&c.steam))steamAdopt(from);return;}
+    if(d.hello){nlog('Steam: hello от '+from+' (я '+NET.ui+')');if(NET.ui==='shost'&&!NET.on&&!(c&&c.steam))steamAdopt(from);return;}
     if(c&&c.steam&&c.peer===from)netData(d);
   });
-  steamNet.onMember((who,st)=>{if(st!==0&&NET.conn&&NET.conn.steam&&NET.conn.peer===who)netClose('Соперник вышел из лобби');});
-  steamNet.onInvited(id=>steamJoin(id));
+  steamNet.onMember((who,st)=>{nlog('Steam: в лобби '+(st===0?'вошёл ':'вышел ')+who);if(st!==0&&NET.conn&&NET.conn.steam&&NET.conn.peer===who)netClose('Соперник вышел из лобби');});
+  steamNet.onInvited(id=>{nlog('Steam: приглашение в лобби '+id);steamJoin(id);});
 }
 const steamConn=peer=>({open:true,steam:true,peer,h:{},on(e,f){this.h[e]=f;},send(o){steamNet.send(peer,JSON.stringify(o));},close(){this.open=false;}});
 function steamAdopt(peer){NET.conn=steamConn(peer);NET.via='steam';NET.msg='Друг зашёл, замер связи…';NET.pings=[];netSend({ping:performance.now()});}
 function steamHost(){
   if(!STEAM.ok){NET.msg='Steam не найден: '+STEAM.err+' — запусти Steam и перезапусти игру';return;}
   netClose('');G.phase='net';NET.ui='shost';NET.msg='Создаём лобби Steam…';
-  steamNet.host().then(r=>{if(NET.ui!=='shost')return;NET.slink=r.link;NET.msg='';steamCopy();steamNet.invite();}).catch(()=>{NET.ui='';NET.msg='Не удалось создать лобби Steam';});
+  steamNet.host().then(r=>{nlog('Steam: лобби '+r.lobby+' создано');if(NET.ui!=='shost')return;NET.slink=r.link;NET.msg='';steamCopy();steamNet.invite();}).catch(e=>{nlog('Steam: лобби не создано: '+e);NET.ui='';NET.msg='Не удалось создать лобби Steam';});
 }
 function steamCopy(){ // ссылка-приглашение: друг жмёт на неё в чате Steam — его игра заходит в лобби
   try{navigator.clipboard.writeText(NET.slink).then(()=>{NET.msg='Ссылка-приглашение скопирована — вставь её другу в чат Steam (Ctrl+V)';},()=>{});}catch(e){}
@@ -2076,6 +2105,7 @@ function steamJoin(id){
   netClose('');vidStop();G.mode=1;G.phase='net';NET.ui='sjoin';NET.gotPing=false;NET.msg='Входим в лобби друга…';
   steamNet.join(id).then(owner=>{
     if(NET.ui!=='sjoin')return;
+    nlog('Steam: вошёл в лобби, хозяин '+owner);
     NET.conn=steamConn(owner);NET.via='steam';NET.msg='Связь с другом через Steam…';
     const t0=performance.now();netSend({hello:1});clearInterval(NET.helloT);
     NET.helloT=setInterval(()=>{
@@ -2083,11 +2113,12 @@ function steamJoin(id){
       if(performance.now()-t0>15000){clearInterval(NET.helloT);netClose('Друг не отвечает — пусть создаст лобби заново');G.phase='net';return;}
       netSend({hello:1});
     },1000);
-  }).catch(()=>{NET.ui='';NET.msg='Не удалось войти в лобби друга';});
+  }).catch(e=>{nlog('Steam: не вошёл в лобби: '+e);NET.ui='';NET.msg='Не удалось войти в лобби друга';});
 }
 
 function netMenu(){
   if(pressed.has('Escape')||PAD[0].back){netClose('');G.phase='menu';return;}
+  if(pressed.has('KeyL'))nlogCopy();
   if(NET.ui===''){
     if(pressed.has('Digit1')||pressed.has('Numpad1')||PAD[0].fx)netHost();
     else if(pressed.has('Digit2')||pressed.has('Numpad2')||PAD[0].fo){NET.ui='join';NET.code='';NET.msg='';pressed.clear();}
@@ -2130,12 +2161,17 @@ function drawNet(){
     txt((N.code+'_____').slice(0,5).split('').join(' '),W/2,275,84,'#ffd24a');
   }
   if(N.msg)txt(N.msg,W/2,410,18,'#ff9a7a','center',true);
+  if(NLOG.length){ // последние шаги подключения
+    NLOG.slice(-6).forEach((s,i)=>txt(s.slice(0,90),12,18+i*13,11,'#8fb','left',true));
+    txt('L — скопировать журнал сети',12,18+Math.min(6,NLOG.length)*13,11,'#ffd24a','left',true);
+  }
   padInfo().forEach((t,i)=>txt('Геймпад: '+t,W/2,450+i*15,12,/игрок/.test(t)?'#7dff8a':'#bbb','center',true));
   txt('Esc / Create — назад',W/2,H-30,14,'#999','center',true);
 }
 function drawNetHud(){
   txt(`сеть${NET.via==='relay'?' (ретранслятор)':NET.via==='steam'?' (Steam)':''} · пинг ${NET.ping} мс · задержка ввода ${NET.D} кадр.`+(NET.resync?` · синхр. ${NET.resync}`:''),W/2,H-8,11,'#8fb','center',true);
-  if(NET.wait>20)txt('ждём соперника…',W/2,130,24,'#ffd24a');
+  if(NET.wait>20){txt('ждём соперника…',W/2,130,24,'#ffd24a');if(NET.wait>120)txt('L — скопировать журнал сети',W/2,156,14,'#ddd','center',true);}
+  if(NET.msg&&/скопирован/.test(NET.msg))txt(NET.msg,W/2,180,16,'#7dff8a','center',true);
 }
 // ссылка вида ...?room=ABCDE сразу открывает вход в комнату (подключение — после первого нажатия, чтобы включился звук)
 {
