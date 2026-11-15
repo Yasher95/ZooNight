@@ -1870,7 +1870,7 @@ function netData(d){
   }
   else if(d.need){if(!N.me)netDesync();}
   else if(d.snap){if(N.me)netApply(d.snap);}
-  else if(d.ping!==undefined)netSend({pong:d.ping});
+  else if(d.ping!==undefined){N.gotPing=true;netSend({pong:d.ping});}
   else if(d.pong!==undefined){
     N.pings.push(performance.now()-d.pong);
     if(N.pings.length<5)setTimeout(()=>netSend({ping:performance.now()}),60);
@@ -1891,10 +1891,12 @@ function netBegin(D,me){
 }
 function netClose(msg){
   const N=NET;
+  clearInterval(N.helloT);
   try{if(N.conn)N.conn.close();}catch(e){}
+  try{if(N.relay&&N.relay!==N.conn)N.relay.close();}catch(e){}
   try{if(N.peer)N.peer.destroy();}catch(e){}
   const was=N.on;
-  Object.assign(N,{on:false,peer:null,conn:null,ui:'',pings:[],msg:msg||''});
+  Object.assign(N,{on:false,peer:null,conn:null,relay:null,via:'',ui:'',pings:[],msg:msg||''});
   if(was&&msg){G.phase='net';}
 }
 function netLib(cb){
@@ -1908,28 +1910,94 @@ function netLib(cb){
 }
 const NET_ID='nochnoy-turnir-';
 // Серверы для прямого соединения. STUN помогает узнать свой внешний адрес; если роутеры (мобильный интернет, CGNAT)
-// не пускают прямое соединение, нужен TURN — ретранслятор. Бесплатного TURN без регистрации нет:
-// получить свой (например metered.ca или Cloudflare) и вписать сюда {urls:'turn:…',username:'…',credential:'…'}.
+// не пускают прямое соединение, игра переходит на запасной канал — ретранслятор MQTT (ниже).
+// Свой TURN (например metered.ca или Cloudflare) можно вписать сюда: {urls:'turn:…',username:'…',credential:'…'}.
 const TURN=[];
 const NET_CFG={config:{iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun2.l.google.com:19302']},
   {urls:'stun:stun.cloudflare.com:3478'},...TURN]}};
-function netWire(conn){
-  NET.conn=conn;
+const RTC_WAIT=8000; // столько ждём прямое соединение, потом — через ретранслятор
+function netWire(conn,host){
+  NET.conn=conn;NET.via='direct';
   conn.on('data',netData);
   conn.on('close',()=>{if(NET.conn===conn)netClose('Соперник отключился');});
-  conn.on('error',()=>{if(NET.conn===conn)netClose('Ошибка соединения');});
-  // диагностика: состояние прямого соединения и тайм-аут, чтобы не висеть молча
+  conn.on('error',()=>{if(NET.conn===conn&&NET.on)netClose('Ошибка соединения');});
+  // прямое соединение не установилось — гость переходит на ретранслятор, хозяин просто ждёт его там
   const t0=performance.now();
   const iv=setInterval(()=>{
-    if(NET.conn!==conn||NET.on){clearInterval(iv);return;}
+    if(NET.conn!==conn||NET.on||conn.open){clearInterval(iv);return;}
     const pc=conn.peerConnection,st=pc?pc.iceConnectionState:'';
-    if(conn.open)return;
-    if(st==='failed'||performance.now()-t0>20000){
-      clearInterval(iv);
-      netClose(TURN.length?'Не удалось соединиться — попробуйте ещё раз':'Не соединиться напрямую — сеть не пускает. Попробуйте другую сеть (интернет с телефона)');
-      G.phase='net';
-    }else if(st==='checking'||st==='new')NET.msg='Устанавливаем прямое соединение… '+Math.round((performance.now()-t0)/1000)+' с';
+    if(st==='failed'||performance.now()-t0>RTC_WAIT){
+      clearInterval(iv);NET.conn=null;try{conn.close();}catch(e){}
+      if(!host)relayJoin(NET.code);
+    }else if(!host)NET.msg='Устанавливаем прямое соединение… '+Math.round((performance.now()-t0)/1000)+' с';
   },500);
+}
+
+// ---------- запасной канал: публичный ретранслятор MQTT (WebSocket по https) ----------
+// Работает в любой сети (идёт как обычный веб-трафик), задержка чуть больше, чем у прямого соединения.
+// Хозяин слушает тему zoonight/КОД/h, гость — zoonight/КОД/g. Гость шлёт hello, пока хозяин не ответит замером связи.
+const MQ_URLS=['wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081','wss://broker.emqx.io:8084/mqtt']; // по задержке: ~70, ~85, ~360 мс
+function mqLib(cb,fail){
+  if(window.mqtt)return cb();
+  const s=document.createElement('script');
+  s.src='https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js';
+  s.onload=()=>cb();s.onerror=()=>fail();
+  document.head.appendChild(s);
+}
+// канал ретранслятора с тем же видом, что у PeerJS: open, send, close, on('data'|'close')
+function relayOpen(code,side,ready,fail,url){
+  mqLib(()=>{
+    let i=url||0,done=false;
+    const tIn='zoonight/'+code+'/'+side,tOut='zoonight/'+code+'/'+(side==='h'?'g':'h');
+    const cl=mqtt.connect(MQ_URLS[i],{connectTimeout:5000,reconnectPeriod:0,clean:true,clientId:'zn_'+Math.random().toString(36).slice(2,10)});
+    const c={open:false,relay:true,url:i,h:{},on(e,f){this.h[e]=f;},
+      send(o){if(this.open)cl.publish(tOut,JSON.stringify(o));},
+      close(){const was=this.open;this.open=false;this.h={};try{cl.end(true);}catch(e){}}};
+    cl.on('connect',()=>cl.subscribe(tIn,{qos:0},err=>{if(err||done)return;done=true;c.open=true;ready(c);}));
+    cl.on('message',(t,m)=>{let d;try{d=JSON.parse(m.toString());}catch(e){return;}if(c.h.data)c.h.data(d);});
+    cl.on('close',()=>{if(c.open){c.open=false;if(c.h.close)c.h.close();}});
+    cl.on('error',()=>{});
+    setTimeout(()=>{if(!done){done=true;try{cl.end(true);}catch(e){}if(i+1<MQ_URLS.length)relayOpen(code,side,ready,fail,i+1);else fail();}},6000);
+  },fail);
+}
+// хозяин: слушает ретранслятор с момента создания комнаты
+function relayHost(code){
+  relayOpen(code,'h',c=>{
+    if(NET.ui!=='host'||NET.code!==code){c.close();return;}
+    NET.relay=c;
+    c.on('data',d=>{
+      if(d.hello){
+        if(NET.on||NET.conn===c)return; // уже играем / замер уже идёт
+        if(NET.conn&&NET.conn.open)return; // прямое соединение уже есть
+        const old=NET.conn;NET.conn=null;try{if(old)old.close();}catch(e){}
+        NET.conn=c;NET.via='relay';
+        c.on('close',()=>{if(NET.conn===c)netClose('Соперник отключился');});
+        NET.msg='Соперник подключился через ретранслятор, замер связи…';NET.pings=[];netSend({ping:performance.now()});
+        return;
+      }
+      if(NET.conn===c)netData(d);
+    });
+  },()=>{});
+}
+// гость: прямое соединение не вышло — через ретранслятор
+function relayJoin(code){
+  if(NET.on||NET.ui!=='joining'||NET.rj)return;
+  NET.rj=true; // переход на ретранслятор — один раз
+  NET.msg='Прямое соединение не прошло — подключаемся через ретранслятор…';
+  relayOpen(code,'g',c=>{
+    if(NET.on||NET.ui!=='joining'){c.close();return;}
+    NET.conn=c;NET.via='relay';
+    c.on('data',netData);
+    c.on('close',()=>{if(NET.conn===c)netClose('Соединение с ретранслятором потеряно');});
+    const t0=performance.now();
+    c.send({hello:1});
+    clearInterval(NET.helloT);
+    NET.helloT=setInterval(()=>{
+      if(NET.on||NET.conn!==c||NET.gotPing){clearInterval(NET.helloT);return;}
+      if(performance.now()-t0>12000){clearInterval(NET.helloT);netClose('Комната '+code+' не отвечает — проверь код и что друг ждёт в комнате');G.phase='net';return;}
+      c.send({hello:1});
+    },1000);
+  },()=>{netClose('Не удалось подключиться ни напрямую, ни через ретранслятор — нужен интернет');G.phase='net';});
 }
 function netHost(){
   NET.ui='host';NET.code='';NET.msg='';
@@ -1937,32 +2005,34 @@ function netHost(){
     const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code='';for(let i=0;i<5;i++)code+=A[Math.random()*A.length|0];
     const peer=NET.peer=new Peer(NET_ID+code,NET_CFG);
-    peer.on('open',()=>{NET.code=code;});
+    peer.on('open',()=>{NET.code=code;relayHost(code);});
     peer.on('connection',conn=>{
-      if(NET.conn){conn.close();return;} // комната на двоих
-      netWire(conn);
-      conn.on('open',()=>{NET.msg='Соперник подключился, замер связи…';NET.pings=[];netSend({ping:performance.now()});});
+      if(NET.conn||NET.on){conn.close();return;} // комната на двоих
+      netWire(conn,true);
+      conn.on('open',()=>{if(NET.conn!==conn)return;NET.msg='Соперник подключился, замер связи…';NET.pings=[];netSend({ping:performance.now()});});
     });
     peer.on('error',e=>{
       if(e.type==='unavailable-id'){peer.destroy();netHost();}
-      else if(!NET.on){NET.ui='';NET.msg='Сервер комнат недоступен: '+e.type;}
+      else if(!NET.on&&!NET.code){NET.ui='';NET.msg='Сервер комнат недоступен: '+e.type;}
     });
   });
 }
 function netJoin(code){
-  NET.ui='joining';NET.msg='Подключение к комнате '+code+'…';
+  NET.ui='joining';NET.code=code;NET.gotPing=false;NET.rj=false;NET.via='';NET.msg='Подключение к комнате '+code+'…';
   netLib(()=>{
     const peer=NET.peer=new Peer(NET_CFG);
     peer.on('open',()=>{
+      if(NET.ui!=='joining'||NET.conn)return;
       const conn=peer.connect(NET_ID+code,{reliable:true});
-      netWire(conn);
-      conn.on('open',()=>{NET.msg='Комната найдена, замер связи…';});
+      netWire(conn,false);
+      conn.on('open',()=>{if(NET.conn===conn)NET.msg='Комната найдена, замер связи…';});
     });
     peer.on('error',e=>{
       if(NET.on)return;
-      NET.ui='join';NET.msg=e.type==='peer-unavailable'?'Комната '+code+' не найдена — проверь код':'Не удалось подключиться: '+e.type;
+      relayJoin(code); // сервер комнат недоступен или не нашёл комнату — пробуем ретранслятор
     });
   });
+  setTimeout(()=>{if(!NET.on&&NET.ui==='joining'&&!NET.conn&&!window.Peer)relayJoin(code);},6000); // библиотека не загрузилась
 }
 // ввод кода комнаты с клавиатуры
 addEventListener('keydown',e=>{
@@ -2007,7 +2077,7 @@ function drawNet(){
   txt('Esc / Create — назад',W/2,H-30,14,'#999','center',true);
 }
 function drawNetHud(){
-  txt(`сеть · пинг ${NET.ping} мс · задержка ввода ${NET.D} кадр.`+(NET.resync?` · синхр. ${NET.resync}`:''),W/2,H-8,11,'#8fb','center',true);
+  txt(`сеть${NET.via==='relay'?' (ретранслятор)':''} · пинг ${NET.ping} мс · задержка ввода ${NET.D} кадр.`+(NET.resync?` · синхр. ${NET.resync}`:''),W/2,H-8,11,'#8fb','center',true);
   if(NET.wait>20)txt('ждём соперника…',W/2,130,24,'#ffd24a');
 }
 // ссылка вида ...?room=ABCDE сразу открывает вход в комнату (подключение — после первого нажатия, чтобы включился звук)
