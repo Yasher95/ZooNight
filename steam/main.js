@@ -1,26 +1,34 @@
 // ZOO NIGHT — сборка для Steam (Electron). Игра — тот же index.html, Steam отвечает за игру с друзьями:
-// лобби «только для друзей», приглашение через оверлей Steam (Shift+Tab) и пакеты через сеть Steam (обходит роутеры).
+// лобби «только для друзей», приглашение (ссылка для чата Steam / «Присоединиться» в списке друзей) и пакеты через
+// сеть Steam (обходит роутеры). Steam API работает в отдельном процессе steamworker.js — иначе Steam Input
+// тестового App ID 480 забирает геймпад у окна игры.
 // App ID: 480 (тестовый Spacewar) — пока у игры нет своего. Свой вписать в APP_ID и в steam_appid.txt.
-const { app, BrowserWindow, ipcMain, protocol, net } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, net, utilityProcess } = require('electron');
 const path = require('path');
 const url = require('url');
 
 const APP_ID = 480;
 const GAME_DIR = path.join(__dirname, 'game');
 
-let steam = null, steamErr = '';
-try {
-  const sw = require('steamworks.js');
-  steam = sw.init(APP_ID);
-  sw.electronEnableSteamOverlay();
-} catch (e) { steamErr = String(e && e.message || e); }
-
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required'); // музыка меню сразу
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
 
-let win = null, lobby = null;
+let win = null, worker = null, reqId = 0;
+const pending = new Map();
 const send = (ch, ...a) => { if (win && !win.isDestroyed()) win.webContents.send(ch, ...a); };
-const sid = p => (p && p.steamId64 !== undefined ? p.steamId64 : p).toString();
+
+function startWorker() {
+  worker = utilityProcess.fork(path.join(__dirname, 'steamworker.js'), [], { env: { ...process.env, ZN_APPID: String(APP_ID) }, serviceName: 'ZooNight Steam' });
+  worker.on('message', m => {
+    if (m.id !== undefined) { const p = pending.get(m.id); if (p) { pending.delete(m.id); m.e ? p.reject(new Error(m.e)) : p.resolve(m.r); } return; }
+    send('steam:' + m.t, ...m.a);
+  });
+  worker.on('exit', () => { worker = null; for (const p of pending.values()) p.reject(new Error('Steam остановлен')); pending.clear(); });
+}
+const call = (t, ...a) => new Promise((resolve, reject) => {
+  if (!worker) return reject(new Error('Steam остановлен'));
+  const id = ++reqId; pending.set(id, { resolve, reject }); worker.postMessage({ id, t, a });
+});
 
 function createWindow() {
   win = new BrowserWindow({
@@ -34,53 +42,12 @@ function createWindow() {
   });
 }
 
-// ---------- Steam: лобби, приглашения, пакеты ----------
-ipcMain.handle('steam:info', () => steam
-  ? { ok: true, name: steam.localplayer.getName(), id: sid(steam.localplayer.getSteamId()) }
-  : { ok: false, err: steamErr || 'Steam не запущен' });
-
-ipcMain.handle('steam:host', async () => {
-  if (!steam) return null;
-  if (lobby) { try { lobby.leave(); } catch (e) {} lobby = null; }
-  lobby = await steam.matchmaking.createLobby(1 /* FriendsOnly */, 2);
-  lobby.setData('game', 'zoonight');
-  return lobby.id.toString();
-});
-ipcMain.handle('steam:invite', () => {
-  if (!steam || !lobby) return false;
-  steam.overlay.activateInviteDialog(lobby.id);
-  return true;
-});
-ipcMain.handle('steam:join', async (e, id) => {
-  if (!steam) return null;
-  if (lobby) { try { lobby.leave(); } catch (e) {} lobby = null; }
-  lobby = await steam.matchmaking.joinLobby(BigInt(id));
-  return sid(lobby.getOwner());
-});
-ipcMain.handle('steam:leave', () => { if (lobby) { try { lobby.leave(); } catch (e) {} lobby = null; } });
-ipcMain.on('steam:send', (e, to, str) => {
-  if (!steam) return;
-  try { steam.networking.sendP2PPacket(BigInt(to), 2 /* Reliable */, Buffer.from(str, 'utf8')); } catch (err) {}
-});
-
-function steamLoop() {
-  if (!steam) return;
-  const cb = steam.callback.SteamCallback;
-  steam.callback.register(cb.P2PSessionRequest, v => steam.networking.acceptP2PSession(v.remote));
-  steam.callback.register(cb.GameLobbyJoinRequested, v => send('steam:invited', v.lobby_steam_id.toString()));
-  steam.callback.register(cb.LobbyChatUpdate, v => {
-    if (!lobby || v.lobby.toString() !== lobby.id.toString()) return;
-    send('steam:member', v.user_changed.toString(), v.member_state_change); // 0 — вошёл, 1..4 — вышел
-  });
-  // входящие пакеты — часто, чтобы не добавлять задержку
-  setInterval(() => {
-    let n;
-    while ((n = steam.networking.isP2PPacketAvailable()) > 0) {
-      const p = steam.networking.readP2PPacket(n);
-      send('steam:data', sid(p.steamId), p.data.toString('utf8'));
-    }
-  }, 2);
-}
+ipcMain.handle('steam:info', () => call('info').catch(e => ({ ok: false, err: e.message })));
+ipcMain.handle('steam:host', () => call('host'));
+ipcMain.handle('steam:invite', () => call('invite').catch(() => false));
+ipcMain.handle('steam:join', (e, id) => call('join', id));
+ipcMain.handle('steam:leave', () => call('leave').catch(() => false));
+ipcMain.on('steam:send', (e, to, s) => { if (worker) worker.postMessage({ t: 'send', to, s }); });
 
 app.whenReady().then(() => {
   protocol.handle('app', req => {
@@ -89,24 +56,26 @@ app.whenReady().then(() => {
     if (!f.startsWith(GAME_DIR)) return new Response('', { status: 403 });
     return net.fetch(url.pathToFileURL(f).toString());
   });
+  startWorker();
   createWindow();
-  steamLoop();
-  if (process.env.ZN_SELFTEST) selfTest(process.env.ZN_SELFTEST); // проверка сборки без окна: Steam, страница, лобби
-  // запуск игры по приглашению, когда она была закрыта: Steam передаёт +connect_lobby <id>
+  // запуск по приглашению, когда игра была закрыта: Steam передаёт +connect_lobby <id>
   const i = process.argv.indexOf('+connect_lobby');
-  if (i >= 0 && process.argv[i + 1]) win.webContents.once('did-finish-load', () => send('steam:invited', process.argv[i + 1]));
+  if (i >= 0 && process.argv[i + 1]) win.webContents.once('did-finish-load', () => setTimeout(() => send('steam:invited', process.argv[i + 1]), 1500));
+  if (process.env.ZN_SELFTEST) selfTest(process.env.ZN_SELFTEST); // проверка сборки без окна
 });
+
 function selfTest(outFile) {
   win.hide();
   win.webContents.once('did-finish-load', () => setTimeout(async () => {
-    const r = { steam: !!steam, steamErr };
+    const r = {};
     try {
-      r.page = await win.webContents.executeJavaScript(`({phase:G.phase,steamOn:STEAM.on,steamOk:STEAM.ok,name:STEAM.name,chars:CH.length,imgs:document.images.length})`);
+      r.info = await call('info');
+      r.page = await win.webContents.executeJavaScript(`({phase:G.phase,steamOn:STEAM.on,steamOk:STEAM.ok,name:STEAM.name})`);
       r.audio = await win.webContents.executeJavaScript(`(audioInit(),new Promise(res=>setTimeout(()=>res(Object.keys(BUFS).length),2500)))`);
-      if (steam) { const l = await steam.matchmaking.createLobby(1, 2); r.lobby = l.id.toString(); r.owner = sid(l.getOwner()) === sid(steam.localplayer.getSteamId()); l.leave(); }
+      if (r.info.ok) { r.host = await call('host'); r.leave = await call('leave'); }
     } catch (e) { r.err = String(e && e.message || e); }
     require('fs').writeFileSync(outFile, JSON.stringify(r, null, 1));
     app.quit();
   }, 3000));
 }
-app.on('window-all-closed', () => { if (lobby) try { lobby.leave(); } catch (e) {} app.quit(); });
+app.on('window-all-closed', () => { if (worker) { worker.postMessage({ id: -1, t: 'leave' }); setTimeout(() => { try { worker.kill(); } catch (e) {} app.quit(); }, 200); } else app.quit(); });

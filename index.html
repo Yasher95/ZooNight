@@ -2066,7 +2066,10 @@ function steamAdopt(peer){NET.conn=steamConn(peer);NET.via='steam';NET.msg='Др
 function steamHost(){
   if(!STEAM.ok){NET.msg='Steam не найден: '+STEAM.err+' — запусти Steam и перезапусти игру';return;}
   netClose('');G.phase='net';NET.ui='shost';NET.msg='Создаём лобби Steam…';
-  steamNet.host().then(id=>{if(NET.ui!=='shost')return;NET.msg='';steamNet.invite();}).catch(()=>{NET.ui='';NET.msg='Не удалось создать лобби Steam';});
+  steamNet.host().then(r=>{if(NET.ui!=='shost')return;NET.slink=r.link;NET.msg='';steamCopy();steamNet.invite();}).catch(()=>{NET.ui='';NET.msg='Не удалось создать лобби Steam';});
+}
+function steamCopy(){ // ссылка-приглашение: друг жмёт на неё в чате Steam — его игра заходит в лобби
+  try{navigator.clipboard.writeText(NET.slink).then(()=>{NET.msg='Ссылка-приглашение скопирована — вставь её другу в чат Steam (Ctrl+V)';},()=>{});}catch(e){}
 }
 function steamJoin(id){
   if(!STEAM.ok)return;
@@ -2089,7 +2092,8 @@ function netMenu(){
     if(pressed.has('Digit1')||pressed.has('Numpad1')||PAD[0].fx)netHost();
     else if(pressed.has('Digit2')||pressed.has('Numpad2')||PAD[0].fo){NET.ui='join';NET.code='';NET.msg='';pressed.clear();}
     else if(STEAM.on&&(pressed.has('Digit3')||pressed.has('Numpad3')||PAD[0].ft))steamHost();
-  }else if(NET.ui==='shost'&&(pressed.has('Digit3')||pressed.has('Numpad3')||PAD[0].ft)){steamNet.invite(); // открыть приглашение ещё раз
+  }else if(NET.ui==='shost'&&NET.slink&&(pressed.has('KeyC')||PAD[0].fs)){steamCopy(); // скопировать ссылку ещё раз
+  }else if(NET.ui==='shost'&&(pressed.has('Digit3')||pressed.has('Numpad3')||PAD[0].ft)){steamNet.invite(); // окно приглашения Steam
   }else if(NET.ui==='join'&&NET.code.length===5&&(PAD[0].fx||PAD[0].start)){netJoin(NET.code); // вход по ссылке с геймпада
   }else if(NET.ui==='host'&&NET.code&&pressed.has('KeyC')){
     try{navigator.clipboard.writeText(netLink());NET.msg='Ссылка скопирована — отправь её другу';}catch(e){}
@@ -2108,9 +2112,10 @@ function drawNet(){
     txt('Управление у каждого своё: геймпад или клавиатура — как настроено в меню «Управление».',W/2,y0+26,16,'#ddd','center',true);
   }else if(N.ui==='shost'){
     txt('ЛОББИ STEAM',W/2,200,40,'#9fd8ff');
-    txt('Выбери друга в окне Steam и нажми «Пригласить».',W/2,250,20,'#fff','center',true);
-    txt('Друг должен уже запустить игру — тогда приглашение примется прямо в ней.',W/2,278,16,'#ddd','center',true);
-    txt('[3] / △ — открыть приглашение ещё раз · ждём друга…',W/2,320,18,'#ffd24a','center',true);
+    txt('Ссылка-приглашение уже в буфере обмена: вставь её другу в чат Steam (Ctrl+V).',W/2,246,18,'#fff','center',true);
+    txt('Или друг в списке друзей Steam жмёт на тебя → «Присоединиться к игре».',W/2,272,18,'#fff','center',true);
+    txt('У друга игра должна быть уже запущена.',W/2,298,16,'#ddd','center',true);
+    txt('C / □ — скопировать ссылку ещё раз · 3 / △ — окно приглашения Steam · ждём друга…',W/2,336,16,'#ffd24a','center',true);
   }else if(N.ui==='sjoin'){
     txt('ЛОББИ STEAM',W/2,220,40,'#9fd8ff');
   }else if(N.ui==='host'){
