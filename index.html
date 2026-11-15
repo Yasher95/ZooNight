@@ -757,7 +757,9 @@ function recov(f){
   return r;
 }
 // преимущество в блоке: у серии своё (SADV), иначе — у удара (badv). Плюс — атакующий ходит первым, минус — открыт
-const advOf=(seq,m,ch)=>{const t=(ch&&ch.sadv)||SADV;return seq&&t[seq]!==undefined?t[seq]:m.badv!==undefined?m.badv:-3;};
+// BLOCK_GAP — общий запас защитнику: после блока у него на столько кадров больше времени вставить свою серию (наказать)
+const BLOCK_GAP=3;
+const advOf=(seq,m,ch)=>{const t=(ch&&ch.sadv)||SADV;return(seq&&t[seq]!==undefined?t[seq]:m.badv!==undefined?m.badv:-3)-BLOCK_GAP;};
 function breakString(f){if(!f.locked){f.locked=true;f.breakT=45;}}
 // приём нажатий. Во время удара лишняя, неверная или запоздалая кнопка срывает серию.
 function feed(f,inp){
@@ -1179,7 +1181,7 @@ function updF(f,o,inp){
   if(f.comboT>0&&--f.comboT===0)f.combo=0;
   f.hpLag+=(f.hp-f.hpLag)*.06;
   feed(f,inp);
-  for(const b of BK)if(!inp[b]&&f.buf[b]>0)f.buf[b]--;
+  for(const b of BK)if(!inp[b]&&f.buf[b]>0&&f.state!=='bstun')f.buf[b]--; // нажатое в блокстане ждёт его конца — удар выйдет сразу
   if(f.state==='thrown'){if(f.buf.s>0&&inp.g&&o.state==='throw')techThrow(o,f);return;} // выход из броска — L2 в окне
   if(f.state==='throw'){f.vx=0;if(++f.thT>TECH_WIN)doThrow(f,o);return;}
   if(f.state==='grabbed')return; // положением управляет тот, кто держит
