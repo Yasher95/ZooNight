@@ -28,16 +28,19 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const down=new Set(),pressed=new Set();
 addEventListener('keydown',e=>{
   if(!e.repeat){down.add(e.code);pressed.add(e.code);lastDev='key';}
-  if(/Arrow|Space|Tab|Backspace/.test(e.code))e.preventDefault();
+  if(/Arrow|Space|Tab|Backspace|Numpad|Control/.test(e.code))e.preventDefault();
   audioInit();
 });
 addEventListener('keyup',e=>down.delete(e.code));
 addEventListener('pointerdown',()=>audioInit()); // любой клик или касание в окне включает звук и музыку
 addEventListener('blur',()=>down.clear());
+// игрок 1: стрелки + нампад (7 / 9 — руки, 4 / 6 — ноги, 0 — блок, 2 — спецприём, 1 — захват, правый Ctrl — бег)
+// игрок 2: WASD + R F T G, H — блок, Y — спецприём, U — захват, левый Shift — бег
 const KEYS_DEF=[
-  {l:'KeyA',r:'KeyD',u:'KeyW',d:'KeyS',p1:'KeyR',p2:'KeyF',k1:'KeyT',k2:'KeyG',blk:'KeyH',s:'KeyY',g:'KeyU',run:'ShiftLeft'},
-  {l:'ArrowLeft',r:'ArrowRight',u:'ArrowUp',d:'ArrowDown',p1:'KeyI',p2:'KeyK',k1:'KeyO',k2:'KeyL',blk:'Semicolon',s:'KeyP',g:'BracketLeft',run:'ShiftRight'}
+  {l:'ArrowLeft',r:'ArrowRight',u:'ArrowUp',d:'ArrowDown',p1:'Numpad7',p2:'Numpad9',k1:'Numpad4',k2:'Numpad6',blk:'Numpad0',s:'Numpad2',g:'Numpad1',run:'ControlRight'},
+  {l:'KeyA',r:'KeyD',u:'KeyW',d:'KeyS',p1:'KeyR',p2:'KeyF',k1:'KeyT',k2:'KeyG',blk:'KeyH',s:'KeyY',g:'KeyU',run:'ShiftLeft'}
 ];
+const KEYS_VER=2; // сменилась раскладка по умолчанию — старые сохранённые клавиши не подхватываются
 const BK=['p1','p2','k1','k2','s'];
 const newBuf=()=>({p1:0,p2:0,k1:0,k2:0,s:0});
 // геймпад (стандартная раскладка, DualSense): 0 крест, 1 круг, 2 квадрат, 3 треугольник, 4 L1, 5 R1, 6 L2, 7 R2, 12-15 крестовина
@@ -121,10 +124,13 @@ const KEYS=JSON.parse(JSON.stringify(KEYS_DEF));
 // std — стандартная раскладка браузера, raw — нестандартная (DInput PlayStation)
 const PAD_DEF={std:{p1:3,p2:2,k1:1,k2:0,blk:5,run:4,s:7,g:6},raw:{p1:3,p2:0,k1:2,k2:1,blk:5,run:4,s:7,g:6}};
 const PADMAP=JSON.parse(JSON.stringify(PAD_DEF));
-function ctlSave(){try{localStorage.setItem('nt_controls',JSON.stringify({k:KEYS,p:PADMAP}));}catch(e){}}
+function ctlSave(){try{localStorage.setItem('nt_controls',JSON.stringify({k:KEYS,p:PADMAP,v:KEYS_VER}));}catch(e){}}
 try{
   const s=JSON.parse(localStorage.getItem('nt_controls'));
-  if(s){Object.assign(KEYS[0],s.k[0]);Object.assign(KEYS[1],s.k[1]);Object.assign(PADMAP.std,s.p.std);Object.assign(PADMAP.raw,s.p.raw);}
+  if(s){
+    if(s.v===KEYS_VER){Object.assign(KEYS[0],s.k[0]);Object.assign(KEYS[1],s.k[1]);}
+    Object.assign(PADMAP.std,s.p.std);Object.assign(PADMAP.raw,s.p.raw);
+  }
 }catch(e){}
 let lastDev='key'; // чем игрок 1 пользовался последним: от этого зависят подписи кнопок на экране
 const KACT=[['l','Влево'],['r','Вправо'],['u','Прыжок'],['d','Присед'],['p1','Рука 1'],['p2','Рука 2'],['k1','Нога 1'],['k2','Нога 2'],
@@ -1565,9 +1571,10 @@ function tick(net){
     }
   }else if(G.phase==='end'){
     world(false);
-    const go=(!net&&pressed.has('Enter'))||padStart;
-    if(!net&&!VID.done){if(go)vidStop();} // первое нажатие — пропустить ролик
+    const go=(!net&&pressed.has('Enter'))||padStart,pick=!!(IN[0].p1||IN[1].p1); // рука 1 (△ / Num7) — сменить бойца
+    if(!net&&!VID.done){if(go||pick)vidStop();} // первое нажатие — пропустить ролик
     else if(go)startMatch();
+    else if(pick){vidStop();toSelect();} // экран выбора бойца (по сети — у обоих)
   }
 }
 // ---------- ультра комбо ----------
@@ -2762,12 +2769,13 @@ function render(){
     const v=VID.el;
     ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
     if(v.readyState>=2&&v.videoWidth){const s=Math.max(W/v.videoWidth,H/v.videoHeight),vw=v.videoWidth*s,vh=v.videoHeight*s;ctx.drawImage(v,(W-vw)/2,(H-vh)/2,vw,vh);}
-    if(G.t>40)txt(NET.on?'Options — реванш':'Enter / Options — пропустить',W-20,H-18,16,'rgba(255,255,255,.7)','right');
+    if(G.t>40)txt(NET.on?`Options — реванш · ${ctlLabel('p1',0)} — сменить бойца`:'Enter / Options — пропустить',W-20,H-18,16,'rgba(255,255,255,.7)','right');
   }else if(G.phase==='end'){
     const w=F.find(f=>f.wins>=2);
     txt('ПОБЕДИТЕЛЬ',W/2,200,50,'#fff');
     txt(w.ch.name+(w.cpu?' (ИИ)':''),W/2,280,90,'#ffd24a');
     txt('Enter / Options — реванш · Esc / Create — меню',W/2,340,22,'#ddd');
+    txt(`${ctlLabel('p1',0)} — сменить бойца`,W/2,374,22,'#ffd24a');
   }
   if(G.mode===4){ // демо: подпись ролика и подсказка выхода
     ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,H-44,W,44);
