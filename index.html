@@ -1907,18 +1907,36 @@ function netLib(cb){
   document.head.appendChild(s);
 }
 const NET_ID='nochnoy-turnir-';
+// Серверы для прямого соединения. STUN помогает узнать свой внешний адрес; если роутеры (мобильный интернет, CGNAT)
+// не пускают прямое соединение, нужен TURN — ретранслятор. Бесплатного TURN без регистрации нет:
+// получить свой (например metered.ca или Cloudflare) и вписать сюда {urls:'turn:…',username:'…',credential:'…'}.
+const TURN=[];
+const NET_CFG={config:{iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun2.l.google.com:19302']},
+  {urls:'stun:stun.cloudflare.com:3478'},...TURN]}};
 function netWire(conn){
   NET.conn=conn;
   conn.on('data',netData);
   conn.on('close',()=>{if(NET.conn===conn)netClose('Соперник отключился');});
   conn.on('error',()=>{if(NET.conn===conn)netClose('Ошибка соединения');});
+  // диагностика: состояние прямого соединения и тайм-аут, чтобы не висеть молча
+  const t0=performance.now();
+  const iv=setInterval(()=>{
+    if(NET.conn!==conn||NET.on){clearInterval(iv);return;}
+    const pc=conn.peerConnection,st=pc?pc.iceConnectionState:'';
+    if(conn.open)return;
+    if(st==='failed'||performance.now()-t0>20000){
+      clearInterval(iv);
+      netClose(TURN.length?'Не удалось соединиться — попробуйте ещё раз':'Не соединиться напрямую — сеть не пускает. Попробуйте другую сеть (интернет с телефона)');
+      G.phase='net';
+    }else if(st==='checking'||st==='new')NET.msg='Устанавливаем прямое соединение… '+Math.round((performance.now()-t0)/1000)+' с';
+  },500);
 }
 function netHost(){
   NET.ui='host';NET.code='';NET.msg='';
   netLib(()=>{
     const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code='';for(let i=0;i<5;i++)code+=A[Math.random()*A.length|0];
-    const peer=NET.peer=new Peer(NET_ID+code);
+    const peer=NET.peer=new Peer(NET_ID+code,NET_CFG);
     peer.on('open',()=>{NET.code=code;});
     peer.on('connection',conn=>{
       if(NET.conn){conn.close();return;} // комната на двоих
@@ -1934,7 +1952,7 @@ function netHost(){
 function netJoin(code){
   NET.ui='joining';NET.msg='Подключение к комнате '+code+'…';
   netLib(()=>{
-    const peer=NET.peer=new Peer();
+    const peer=NET.peer=new Peer(NET_CFG);
     peer.on('open',()=>{
       const conn=peer.connect(NET_ID+code,{reliable:true});
       netWire(conn);
@@ -1959,6 +1977,7 @@ function netMenu(){
   if(NET.ui===''){
     if(pressed.has('Digit1')||pressed.has('Numpad1')||PAD[0].fx)netHost();
     else if(pressed.has('Digit2')||pressed.has('Numpad2')||PAD[0].fo){NET.ui='join';NET.code='';NET.msg='';pressed.clear();}
+  }else if(NET.ui==='join'&&NET.code.length===5&&(PAD[0].fx||PAD[0].start)){netJoin(NET.code); // вход по ссылке с геймпада
   }else if(NET.ui==='host'&&NET.code&&pressed.has('KeyC')){
     try{navigator.clipboard.writeText(netLink());NET.msg='Ссылка скопирована — отправь её другу';}catch(e){}
   }
@@ -1980,7 +1999,7 @@ function drawNet(){
       txt('C — скопировать ссылку · ждём соперника…',W/2,355,18,'#fff','center',true);
     }else txt('Создаём комнату…',W/2,250,28,'#fff');
   }else{
-    txt('Введи код комнаты и нажми Enter',W/2,200,24,'#ddd');
+    txt('Введи код комнаты и нажми Enter / ✕',W/2,200,24,'#ddd');
     txt((N.code+'_____').slice(0,5).split('').join(' '),W/2,275,84,'#ffd24a');
   }
   if(N.msg)txt(N.msg,W/2,410,18,'#ff9a7a','center',true);
@@ -1994,7 +2013,7 @@ function drawNetHud(){
 // ссылка вида ...?room=ABCDE сразу открывает вход в комнату (подключение — после первого нажатия, чтобы включился звук)
 {
   const r=new URLSearchParams(location.search).get('room');
-  if(r&&/^[A-Za-z0-9]{5}$/.test(r))addEventListener('load',()=>{G.phase='net';NET.ui='join';NET.code=r.toUpperCase();NET.msg='Нажми Enter, чтобы войти в комнату';});
+  if(r&&/^[A-Za-z0-9]{5}$/.test(r))addEventListener('load',()=>{G.phase='net';NET.ui='join';NET.code=r.toUpperCase();NET.msg='Нажми Enter (или ✕ на геймпаде), чтобы войти в комнату';});
 }
 
 // ---------- фон ----------
