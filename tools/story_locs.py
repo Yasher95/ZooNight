@@ -46,7 +46,7 @@ def find(fg, ref, k):  # сдвиг fg внутри ref (оба в одном м
 jobs = [  # (выход, фон, [(передний план, референс или None)])
     ('apt', 'квартира/квартира.png', [('apt_fg_chair', 'квартира/передний план, кресло.png', None), ('apt_fg_table', 'квартира/передний план, стол.png', None)]),
     ('street', 'улица/улица.png', [('street_fg', 'улица/передний план.png', 'улица/референс размеров локации.png'), ('street_fg_car', 'улица/авто.png', 'улица/референс размеров локации.png')]),
-    ('metro', 'метро/метро.png', [('metro_train', 'метро/проезжающий вагон пердний план.png', None)]),
+    ('metro', 'метро/метро.png', [('metro_train', 'метро/вагон.png', 'метро/реф размеров.png')]),
 ]
 for name, bgp, fgs in jobs:
     bg = load(os.path.join(src, bgp)); h, w = bg.shape[:2]; s = H / h

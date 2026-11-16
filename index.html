@@ -21,7 +21,7 @@ let WW=1634;const SPAN=W-90; // в прохождении WW — ширина т
 let AL=236,AR=1398; // края зоны для ходьбы с запасом на ширину бойца (у каждой арены свои, см. ARENAS)
 let camX=(WW-W)/2;
 const camTarget=()=>clamp((F[0].x+F[1].x)/2-W/2,0,WW-W);
-const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const cv=document.getElementById('c');let ctx=cv.getContext('2d'); // let: в прохождении бойцы рисуются во временный холст для освещения
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
 // ---------- ввод ----------
@@ -2756,20 +2756,21 @@ const ROOMS={
       post:['Ржавый сплюнул кровь вместе с правдой.','— Её увезли... в метро. Канал-стрит, заброшенный перегон. Там лаборатория Дока...','— Док не отпустит её живой, Конь. Никого не отпускает.',
         'Я оставил его на полу. Ночь только начиналась.'],then:()=>{STY.flags.boss=1;}}],
     spots:[{id:'out',x0:236,x1:340,label:'выйти на улицу',to:'street',at:1215,face:1}]},
-  metro:{name:'СТАНЦИЯ «КАНАЛ-СТРИТ»',kind:'img',bg:'loc_metro.jpg',w:2037,gy:400,al:60,ar:1990,z:.8,tint:'rgba(6,14,10,.12)',train:241,
-    lights:[{x:722,y:44,r:240,c:'255,240,170',a:.22,fl:.01},{x:1395,y:44,r:240,c:'255,240,170',a:.2,fl:.03}],
+  metro:{name:'СТАНЦИЯ «КАНАЛ-СТРИТ»',kind:'img',bg:'loc_metro.jpg',w:1923,gy:399,al:50,ar:1880,z:.668,tint:'rgba(6,14,10,.10)',train:242,
+    lights:[{x:683,y:112,r:230,c:'255,240,170',a:.2,fl:.01,cone:1},{x:1303,y:110,r:230,c:'255,240,170',a:.18,fl:.03,cone:1}],
     enter:['Подземка. Воздух здесь старше города — пахнет ржавчиной, мочой и электричеством.','Где-то в этих туннелях — лаборатория Дока. И она.'],
-    fights:[{x:450,lock:[60,1020],foes:['shest','thug'],pre:['На платформе меня ждали. Ржавый всё-таки успел позвонить.']},
-      {x:1300,lock:[1077,2037],foes:['guard'],pre:['У входа в перегон стоял здоровяк в белом халате поверх куртки. Охрана Дока.','— Дальше нельзя, — сказал он. — Док не любит гостей.','Я тоже.'],
+    fights:[{x:450,lock:[50,1010],foes:['shest','thug'],pre:['На платформе меня ждали. Ржавый всё-таки успел позвонить.']},
+      {x:1250,lock:[963,1923],foes:['guard'],pre:['У входа в перегон стоял здоровяк в белом халате поверх куртки. Охрана Дока.','— Дальше нельзя, — сказал он. — Док не любит гостей.','Я тоже.'],
         post:['Охранник хрипел на бетоне. В кармане его халата — ключ с биркой: «Перегон 4. Лаборатория».']}],
     spots:[
-      {id:'up',x0:60,x1:200,label:'наверх, на улицу',to:'street',at:1960,face:-1},
-      {id:'exit',x0:1080,x1:1140,label:'выход',once:1,lines:['Табличка «EXIT». Наверху — тот же город. Мне — вниз.']},
-      {id:'tunnel',x0:1900,x1:2030,label:'в туннель',end:1,need:'guard',locked:['Тёмный перегон. Сначала надо пройти мимо охраны.'],
+      {id:'up',x0:50,x1:190,label:'наверх, на улицу',to:'street',at:1960,face:-1},
+      {id:'exit',x0:1010,x1:1070,label:'выход',once:1,lines:['Табличка «EXIT». Наверху — тот же город. Мне — вниз.']},
+      {id:'tunnel',x0:1790,x1:1915,label:'в туннель',end:1,need:'guard',locked:['Тёмный перегон. Сначала надо пройти мимо охраны.'],
         lines:['Перегон уходил в темноту, как глотка. Где-то там, под городом, была она.','И я шёл за ней.']}]}
 };
 // после стычки с охраной Дока — открыт туннель (флаг ставит стычка)
 ROOMS.metro.fights[1].then=()=>{STY.flags.guard=1;};
+ROOMS.street.spots.find(s=>s.id==='subway').at=110;
 // Зум локации z: всё рисуется ×z (бойцы ростом как на референсах — 151 px при росте картинки 540). Комнаты выше заданы
 // в экранных пикселях; здесь — один раз — переводятся в единицы мира (÷z), в которых живут бойцы, удары и камера.
 (function(){
@@ -2996,6 +2997,44 @@ function storyScreenFx(){
   }
   const g=ctx.createRadialGradient(W/2,H*.55,H*.35,W/2,H*.55,H*.95);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.7)');
   ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+}
+// ---------- динамическое освещение бойцов ----------
+// Яркость и цвет света берутся с картинки локации вокруг фигуры бойца (уменьшенная копия фона, 1 px ≈ 8 px мира):
+// в тени боец темнее, под лампой — светлее и окрашен её светом (тёплый, холодный, неон). Плюс источники света комнаты.
+// Меняется плавно (f.lit). Боец рисуется во временный холст: там затемнение/яркость и подкраска только по его силуэту.
+const LMAP={};
+function lightMap(R){
+  if(LMAP[R.bg])return LMAP[R.bg];
+  const im=simgf(R.bg);if(!imgOk(im))return null;
+  const gw=Math.round(R.w/8),gh=Math.round(H/RZ()/8),c=document.createElement('canvas');c.width=gw;c.height=gh;
+  const x=c.getContext('2d');x.drawImage(im,0,0,gw,gh);
+  try{return LMAP[R.bg]={w:gw,h:gh,d:x.getImageData(0,0,gw,gh).data};}catch(e){return LMAP[R.bg]={w:0};}
+}
+function lightAt(f){
+  const R=ROOMS[STY.room];let r=0,g=0,b=0,n=0;
+  const M=R.kind==='img'?lightMap(R):null;
+  if(M&&M.w){ // средний цвет фона за фигурой
+    const x0=Math.max(0,(f.x-30)/8|0),x1=Math.min(M.w-1,(f.x+30)/8|0),y0=Math.max(0,(f.y-175)/8|0),y1=Math.min(M.h-1,(f.y-10)/8|0);
+    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const i=(y*M.w+x)*4;r+=M.d[i];g+=M.d[i+1];b+=M.d[i+2];n++;}
+  }
+  if(n){r/=n*255;g/=n*255;b/=n*255;}else{r=g=b=.16;}
+  for(const l of R.lights||[]){const d=Math.hypot(l.x-f.x,l.y-(f.y-90));if(d<l.r*1.1){const k=l.a*(1-d/(l.r*1.1))*1.6,[lr,lg,lb]=l.c.split(',').map(v=>v/255);r+=lr*k;g+=lg*k;b+=lb*k;}}
+  return[r,g,b];
+}
+const LC=document.createElement('canvas');LC.width=W;LC.height=H;const lcx=LC.getContext('2d');
+function drawLitF(f){
+  const[r,g,b]=lightAt(f),lum=.3*r+.59*g+.11*b,t=f.lit||(f.lit={b:1,r:1,g:1,bl:1});
+  const tb=clamp(.42+lum*1.9,.45,1.3),m=Math.max(r,g,b,.001); // яркость: тёмный угол ~0,5, под лампой ~1,2
+  t.b+=(tb-t.b)*.08;t.r+=(r/m-t.r)*.08;t.g+=(g/m-t.g)*.08;t.bl+=(b/m-t.bl)*.08; // плавно
+  if(f.flash>0){drawF(f);return;} // вспышка удара — без освещения
+  lcx.setTransform(1,0,0,1,0,0);lcx.clearRect(0,0,W,H);lcx.setTransform(ctx.getTransform());
+  const main=ctx;ctx=lcx;lcx.filter=`brightness(${t.b.toFixed(3)})`;
+  try{drawF(f);}finally{ctx=main;lcx.filter='none';}
+  // подкраска цветом света — только по силуэту бойца
+  lcx.setTransform(1,0,0,1,0,0);lcx.globalCompositeOperation='source-atop';
+  lcx.fillStyle=`rgba(${t.r*255|0},${t.g*255|0},${t.bl*255|0},${clamp(.1+(t.b-.6)*.25,.08,.28).toFixed(3)})`;lcx.fillRect(0,0,W,H);
+  lcx.globalCompositeOperation='source-over';
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(LC,0,0);ctx.restore();
 }
 function drawStoryDiff(){
   const im=simgf('loc_street.jpg');
@@ -3275,7 +3314,7 @@ function render(){
     ctx.ellipse(f.x,GY+3,Math.max(14,40-(GY-f.y)*.12),7,0,0,7);ctx.fill();
   }
   const order=F[0].state==='attack'?[F[1],F[0]]:[F[0],F[1]];
-  for(const f of order)if(!f.gone)drawF(f);
+  for(const f of order)if(!f.gone){if(G.mode===7)drawLitF(f);else drawF(f);}
   SPFX=SPFX.filter(e=>frame-e.t0<16&&imgOk(e.spr.img));
   for(const e of SPFX){ // брызги плевка
     const s=e.spr,fr=frame-e.t0<8?4:7,sc=.62;
