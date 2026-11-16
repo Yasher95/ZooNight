@@ -2703,7 +2703,7 @@ const SDIFF=[
 // [картинка, x, y, {pf — параллакс}] в координатах мира (картинки переднего плана — в масштабе фона, на экран ×0.5).
 // kind 'in' — коридор, собранный из стен-ассетов одной высоты (масштаб SI), потолок с карнизом, пол рисуется.
 const ROOMS={
-  apt:{name:'КВАРТИРА 3B',kind:'img',bg:'loc_apt.jpg',w:1043,gy:470,al:40,ar:1003,
+  apt:{name:'КВАРТИРА 3B',kind:'img',bg:'loc_apt.jpg',w:1043,gy:470,al:40,ar:1003,z:.8,
     fgs:[['apt_fg_chair',-20,392,{pf:1.18}],['apt_fg_table',720,402,{pf:1.18}]],
     lights:[{x:795,y:112,r:200,c:'255,196,120',a:.28,fl:.006},{x:75,y:338,r:130,c:'140,180,255',a:.26,tv:1}],tint:'rgba(10,8,22,.18)',
     enter:['Нью-Йорк. Январь девяносто седьмого. Снег падал на город, как пепел на пьяницу, уснувшего с сигаретой.',
@@ -2720,7 +2720,7 @@ const ROOMS={
       {id:'pills',x0:722,x1:852,label:'ванная',heal:40,gone:1,lines:['В ванной, за зеркалом, — обезболивающее. После боёв я жил на нём неделями. Две таблетки — и боль становится чужой.']},
       {id:'door',x0:880,x1:966,label:'выйти',to:'hall',at:150,face:1,need:'note',locked:['Уйти просто так? Сначала понять, кто это сделал. Осмотрись.']},
       {id:'coat',x0:968,x1:1040,label:'вешалка',once:1,lines:['Её куртка на вешалке. Значит, уводили без неё — в одной футболке, по такому морозу.']}]},
-  hall:{name:'КОРИДОР',kind:'in',w:2649,gy:486,wb:472,floor:'tile',tint:'rgba(12,18,24,.40)',
+  hall:{name:'КОРИДОР',kind:'in',w:2649,gy:486,wb:472,z:.8,floor:'tile',tint:'rgba(12,18,24,.40)',
     walls:[['i_door3b',48],['i_wall_ext'],['i_hall_doors'],['i_meters'],['i_elevator_g',69],['i_firehose'],['i_wall_paper'],['i_wall_fireexit']],
     hang:[['i_fluor',300,150],['i_fluor',1100,150],['i_fluor',1900,150]],
     back:[['i_bags',1470,{by:486}],['i_trashcan',1930,{by:486}]],
@@ -2735,26 +2735,28 @@ const ROOMS={
       {id:'lift',x0:1580,x1:1850,label:'лифт',once:1,lines:['Лифт не работает с восемьдесят девятого. Как и полиция в этом районе.']},
       {id:'pills',x0:1870,x1:2010,label:'мусорное ведро',heal:30,gone:1,lines:['Чья-то заначка за мусорным ведром. Пузырёк обезболивающего. Никто не будет искать.']},
       {id:'exit',x0:2520,x1:2645,label:'выйти на улицу',to:'street',at:140,face:1,once:1,lines:['Пожарный выход. Холод ударил в лицо, как мокрое полотенце.']}]},
-  street:{name:'УЛИЦА',kind:'img',bg:'loc_street.jpg',w:2037,gy:498,al:40,ar:1997,snow:1,tint:'rgba(8,12,26,.10)',
+  street:{name:'УЛИЦА',kind:'img',bg:'loc_street.jpg',w:2037,gy:467,al:40,ar:1997,z:.8,snow:1,tint:'rgba(8,12,26,.10)',
     lights:[{x:170,y:250,r:320,c:'110,140,200',a:.16,cone:1},{x:600,y:300,r:260,c:'110,140,200',a:.10}],
-    fgs:[['street_fg',433.5,79],['street_fg_car',1875.5,469.5]],
+    fgs:[['street_fg',0,0],['street_fg_car',1792.5,433]],
     enter:['Улица встретила меня снегом и неоном. Этот город никогда не спит — он просто лежит с открытыми глазами.'],
     fights:[{x:420,lock:[40,1000],foes:['thug'],pre:['Под эстакадой меня ждали. Ржавый не жалел людей — у него их было больше, чем у меня терпения.']},
-      {x:1180,lock:[1077,2037],foes:['shest','thug'],pre:['Двое вышли из тени у винного. Снег на их плечах не таял.'],post:['Бар «У Ржавого» — в двух шагах. Свет в окне горел, как приглашение на похороны.']}],
+      {x:1300,lock:[1077,2037],foes:['shest','thug'],pre:['Двое вышли из тени у винного. Снег на их плечах не таял.'],post:['Бар «У Ржавого» — в двух шагах. Свет в окне горел, как приглашение на похороны.']}],
     spots:[
-      {id:'porch',x0:760,x1:880,label:'подъезд',once:1,lines:['Под эстакадой всегда темно, даже днём. Поезда гремят над головой, как пустые консервные банки.']},
-      {id:'pills',x0:1385,x1:1465,label:'ящики',heal:35,gone:1,lines:['В ящиках у бара — нетронутый пузырёк обезболивающего. Удача любит тех, кому нечего терять.']},
-      {id:'bar',x0:1470,x1:1540,label:'войти в бар',to:'bar',at:300,face:1},
-      {id:'liquor',x0:1600,x1:1650,label:'винный',once:1,lines:['Винный закрыт. Продавец смотрит из-за решётки и делает вид, что меня здесь нет. Умный продавец.']},
-      {id:'taxi',x0:1660,x1:1780,label:'такси',once:1,lines:['Таксист спал за рулём. Или умер. В этом районе разница небольшая.']},
-      {id:'subway',x0:1930,x1:2030,label:'спуститься в метро',to:'metro',at:120,face:1,need:'boss',locked:['Вход в подземку — за углом. Мне туда, я это чувствовал. Но сначала — бар Ржавого.']}]},
-  bar:{name:'БАР «У РЖАВОГО»',arena:1,w:1634,gy:500,al:236,ar:1398,tint:'rgba(20,10,20,.18)',
+      {id:'porch',x0:180,x1:270,label:'подъезд',once:1,lines:['Под эстакадой всегда темно, даже днём. Поезда гремят над головой, как пустые консервные банки.']},
+      {id:'pills',x0:1065,x1:1135,label:'ящики',heal:35,gone:1,lines:['В ящиках у бара — нетронутый пузырёк обезболивающего. Удача любит тех, кому нечего терять.']},
+      {id:'bar',x0:1180,x1:1250,label:'войти в бар',to:'bar',at:300,face:1},
+      {id:'liquor',x0:1390,x1:1445,label:'винный',once:1,lines:['Винный закрыт. Продавец смотрит из-за решётки и делает вид, что меня здесь нет. Умный продавец.']},
+      {id:'diner',x0:1840,x1:1930,label:'закусочная',once:1,lines:['Закусочная работает круглые сутки. За стеклом — двое копов над пончиками. Им не до меня. Им ни до кого.']},
+      {id:'subway',x0:1940,x1:2030,label:'спуститься в метро',to:'metro',at:120,face:1,need:'boss',locked:['Вход в подземку — за углом. Мне туда, я это чувствовал. Но сначала — бар Ржавого.']}]},
+  bar:{name:'БАР «У РЖАВОГО»',kind:'img',bg:'../arena_bar.jpg',w:1634,gy:500,al:236,ar:1398,z:.8,tint:'rgba(20,10,20,.18)',
+    fgs:[['../arena_bar_fg',1387,419,{s:540/1184}]], // ящик и бочка арены бара (картинка в масштабе 1184 по высоте)
+    lights:[{x:298,y:142,r:95,c:'255,214,140',a:.3,fl:.004,cone:1},{x:505,y:146,r:95,c:'255,220,150',a:.3,fl:.012,cone:1},{x:720,y:142,r:95,c:'205,255,190',a:.26,fl:.004,cone:1}],
     enter:['Бар «У Ржавого». Дым, джаз из сломанного автомата и двадцать глаз, которые сразу поняли, зачем я пришёл.'],
     fights:[{x:420,lock:[0,1634],foes:['boss'],pre:['— Конь, — Ржавый оскалился. — Чемпион подвалов. Пришёл за своей ламой? Она уже далеко, приятель.','— Тогда ты скажешь мне, где именно.'],
       post:['Ржавый сплюнул кровь вместе с правдой.','— Её увезли... в метро. Канал-стрит, заброшенный перегон. Там лаборатория Дока...','— Док не отпустит её живой, Конь. Никого не отпускает.',
         'Я оставил его на полу. Ночь только начиналась.'],then:()=>{STY.flags.boss=1;}}],
-    spots:[{id:'out',x0:236,x1:340,label:'выйти на улицу',to:'street',at:1500,face:1}]},
-  metro:{name:'СТАНЦИЯ «КАНАЛ-СТРИТ»',kind:'img',bg:'loc_metro.jpg',w:2037,gy:398,al:60,ar:1990,tint:'rgba(6,14,10,.12)',train:1,
+    spots:[{id:'out',x0:236,x1:340,label:'выйти на улицу',to:'street',at:1215,face:1}]},
+  metro:{name:'СТАНЦИЯ «КАНАЛ-СТРИТ»',kind:'img',bg:'loc_metro.jpg',w:2037,gy:400,al:60,ar:1990,z:.8,tint:'rgba(6,14,10,.12)',train:241,
     lights:[{x:722,y:44,r:240,c:'255,240,170',a:.22,fl:.01},{x:1395,y:44,r:240,c:'255,240,170',a:.2,fl:.03}],
     enter:['Подземка. Воздух здесь старше города — пахнет ржавчиной, мочой и электричеством.','Где-то в этих туннелях — лаборатория Дока. И она.'],
     fights:[{x:450,lock:[60,1020],foes:['shest','thug'],pre:['На платформе меня ждали. Ржавый всё-таки успел позвонить.']},
@@ -2768,6 +2770,23 @@ const ROOMS={
 };
 // после стычки с охраной Дока — открыт туннель (флаг ставит стычка)
 ROOMS.metro.fights[1].then=()=>{STY.flags.guard=1;};
+// Зум локации z: всё рисуется ×z (бойцы ростом как на референсах — 151 px при росте картинки 540). Комнаты выше заданы
+// в экранных пикселях; здесь — один раз — переводятся в единицы мира (÷z), в которых живут бойцы, удары и камера.
+(function(){
+  const zf=id=>ROOMS[id].z||1;
+  for(const R of Object.values(ROOMS)){const z=R.z||1;if(z===1)continue;const d=v=>v/z;
+    R.w=d(R.w);R.gy=d(R.gy);if(R.wb)R.wb=d(R.wb);R.al=d(R.al||50);R.ar=d(R.ar||R.w*z-50);if(R.train)R.train=d(R.train);
+    for(const s of R.spots||[]){s.x0=d(s.x0);s.x1=d(s.x1);}
+    for(const f of R.fights||[]){f.x=d(f.x);f.lock=f.lock.map(d);}
+    for(const l of R.lights||[]){l.x=d(l.x);l.y=d(l.y);l.r=d(l.r);}
+    for(const p of R.fgs||[]){p[1]=d(p[1]);p[2]=d(p[2]);}
+    for(const p of R.hang||[]){p[1]=d(p[1]);p[2]=d(p[2]);}
+    for(const p of R.back||[]){p[1]=d(p[1]);if(p[2]&&p[2].by)p[2].by=d(p[2].by);}
+  }
+  for(const R of Object.values(ROOMS))for(const s of R.spots||[])if(s.to)s.at/=zf(s.to);
+})();
+const RZ=()=>(ROOMS[STY.room]&&ROOMS[STY.room].z)||1; // зум текущей локации
+const VW=()=>W/RZ(); // ширина экрана в единицах мира
 // ---------- запуск, локации, враги ----------
 function storyStart(di){
   G.mode=7;G.arena=0;G.sel=[4,6];G.tut=null;STY.D=SDIFF[di===undefined?1:di];
@@ -2777,14 +2796,14 @@ function storyStart(di){
     title:{a:'ГЛАВА ПЕРВАЯ',b:'ПУСТАЯ КВАРТИРА',t:260,max:260},mtrain:{x:-9e3,wait:500},pdm:STY.D.pdm});
   for(const R of Object.values(ROOMS)){for(const L of['hang','back','front','fgs'])for(const p of R[L]||[])simg(p[0]);for(const p of R.walls||[])simg(p[0]);if(R.bg)simgf(R.bg);}
   simg('metro_train');
-  F[0].hp=100;storyRoom('apt',560,1);
+  F[0].hp=100;storyRoom('apt',560/(ROOMS.apt.z||1),1);
 }
 function foeGone(){Object.assign(F[1],{gone:true,alpha:0,state:'idle',x:-9e3,vx:0,vy:0,y:GY,combo:0,gr:null,move:null});}
 function storyRoom(id,x,face){
   const R=ROOMS[id],p=F[0];STY.room=id;WW=R.w;GY=R.gy;AL=R.al||50;AR=R.ar||R.w-50;
   Object.assign(p,{x,y:GY,vx:0,vy:0,state:'idle',stateT:0,facing:face||1,move:null,gr:null,combo:0,dm:STY.pdm,alpha:1,crouching:false});
   foeGone();STY.lock=null;STY.fight=null;STY.koT=0;projs=[];parts=[];hitstop=0;
-  camX=clamp(x-W*.45,0,Math.max(0,WW-W));
+  camX=clamp(x-VW()*.45,0,Math.max(0,WW-VW()));
   STY.cp={room:id,x,face,hp:p.hp};STY.label={s:R.name,t:150};
   if(!STY.seen[id]){STY.seen[id]=1;if(R.enter)storyCap(R.enter);}
 }
@@ -2851,9 +2870,9 @@ function storyTick(){
   return false;
 }
 function storyCam(){
-  const S=STY,pl=F[0];let lo=0,hi=Math.max(0,WW-W);
-  if(S.lock){lo=S.lock[0];hi=Math.max(lo,S.lock[1]-W);}
-  const t=clamp(pl.x-W*.45+pl.facing*50,lo,hi);camX+=(t-camX)*.1;camX=clamp(camX,lo,hi);
+  const S=STY,pl=F[0],vw=VW();let lo=0,hi=Math.max(0,WW-vw);
+  if(S.lock){lo=S.lock[0];hi=Math.max(lo,S.lock[1]-vw);}
+  const t=clamp(pl.x-vw*.45+pl.facing*50,lo,hi);camX+=(t-camX)*.1;camX=clamp(camX,lo,hi);
 }
 // ---------- отрисовка ----------
 function spr(p,base){ // проп [имя, x, опции]; base — низ по умолчанию
@@ -2865,7 +2884,7 @@ function spr(p,base){ // проп [имя, x, опции]; base — низ по 
 const FLOORS={};
 function floorCanvas(R){ // пол рисуется один раз мелкими «пикселями» (×3) под стиль ассетов
   if(FLOORS[R.name])return FLOORS[R.name];
-  const k=3,top=R.kind==='out'?R.bb:R.wb,c=document.createElement('canvas');c.width=Math.ceil(R.w/k);c.height=Math.ceil((H-top)/k);
+  const k=3,top=R.kind==='out'?R.bb:R.wb,c=document.createElement('canvas');c.width=Math.ceil(R.w/k);c.height=Math.ceil((H/(R.z||1)-top)/k);
   const x=c.getContext('2d'),w=c.width,h=c.height;let seed=R.w;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
   if(R.floor==='wood'){
     for(let y=0;y<h;y++){const t=y/h,v=34+t*22|0;x.fillStyle=`rgb(${v+14},${v},${v-10})`;x.fillRect(0,y,w,1);}
@@ -2900,7 +2919,7 @@ function drawTrain(R){
 function storyBack(cx){
   const R=ROOMS[STY.room];
   if(R.arena){drawArena();return;}
-  if(R.kind==='img'){const im=simgf(R.bg);if(imgOk(im))ctx.drawImage(im,0,0,R.w,H);return;} // цельная локация-картинка
+  if(R.kind==='img'){const im=simgf(R.bg);if(imgOk(im))ctx.drawImage(im,0,0,R.w,H/RZ());return;} // цельная локация-картинка
   ctx.imageSmoothingEnabled=false;
   if(R.kind==='out'){
     ctx.save();ctx.translate(cx,0);
@@ -2917,27 +2936,28 @@ function storyBack(cx){
     let x=0,top=R.wb;
     for(const[n,ct=0]of R.walls){ // по 3 px с боков срезаются — у ассетов там обводка, на стыке она давала шов
       const im=simg(n);if(!imgOk(im)){x+=260;continue;}
-      const e=3,sw=im.naturalWidth-e*2,sh=im.naturalHeight-ct,w=sw*SI,h=sh*SI;top=Math.min(top,R.wb-h);
+      const e=3,sw=im.naturalWidth-e*2,sh=im.naturalHeight-ct,w=sw*SI/RZ(),h=sh*SI/RZ();top=Math.min(top,R.wb-h);
       ctx.drawImage(im,e,ct,sw,sh,x,R.wb-h,w+.6,h);x+=w;
     }
     // потолок: тёмная полоса и карниз по верху стен (без растянутых текстур — без склеек)
     const ct=Math.round(top);
     const cg=ctx.createLinearGradient(0,0,0,ct);cg.addColorStop(0,'#060608');cg.addColorStop(1,'#1a1a1d');ctx.fillStyle=cg;ctx.fillRect(0,0,WW,ct);
     ctx.fillStyle='#2c2a27';ctx.fillRect(0,ct-7,WW,7);ctx.fillStyle='#48443e';ctx.fillRect(0,ct-7,WW,2);ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,ct,WW,5);
-    for(const p of R.hang||[])spr([p[0],p[1],{top:p[2],s:SI}],{});
+    for(const p of R.hang||[])spr([p[0],p[1],{top:p[2],s:SI/RZ()}],{});
     const fc=floorCanvas(R);ctx.drawImage(fc,0,R.wb,fc.width*3,fc.height*3);
     ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,R.wb,WW,3);
   }
-  for(const p of R.back||[])spr(p,{by:R.kind==='out'?R.bb+12:R.wb+8,s:R.kind==='out'?1:SI});
+  for(const p of R.back||[])spr(p,{by:R.kind==='out'?R.bb+12:R.wb+8,s:R.kind==='out'?1:SI/RZ()});
   ctx.imageSmoothingEnabled=true;
 }
 function storyFront(cx){
   const R=ROOMS[STY.room];
   if(R.arena){const A=ARENAS[0],r=A.fgr;if(imgOk(A.fg))ctx.drawImage(A.fg,r[0]*WW/3584,r[1]*H/1184,r[2]*WW/3584,r[3]*H/1184);}
-  ctx.fillStyle=R.tint||'rgba(14,16,30,.4)';ctx.fillRect(cx-20,0,W+40,H);
+  const vw=VW(),vh=H/RZ();
+  ctx.fillStyle=R.tint||'rgba(14,16,30,.4)';ctx.fillRect(cx-20,0,vw+40,vh);
   ctx.save();ctx.globalCompositeOperation='lighter';
   (R.lights||[]).forEach((l,i)=>{
-    if(l.x<cx-l.r||l.x>cx+W+l.r)return;
+    if(l.x<cx-l.r||l.x>cx+vw+l.r)return;
     if(l.off>0)l.off--;else if(l.fl&&Math.random()<l.fl)l.off=3+Math.random()*10|0;
     let v=.85+.08*Math.sin(frame*.07+i)+(l.neon?.07*Math.sin(frame*.31+i*2):0);
     if(l.tv)v*=.6+.4*Math.abs(Math.sin(frame*.23+Math.sin(frame*.05)*3));
@@ -2955,16 +2975,16 @@ function storyFront(cx){
   for(const p of R.front||[]){const o=p[2]||{},pf=o.pf||1.3;spr([p[0],p[1]-cx*(pf-1),o],{by:H+40,s:R.kind==='out'?1.15:SI*1.15});}
   ctx.filter='none';ctx.imageSmoothingEnabled=true;
   // передние планы цельных локаций (картинки в масштабе фона 1080 → на экран ×0.5)
-  for(const[n,x,y,o]of R.fgs||[]){const im=simg(n);if(!imgOk(im))continue;const pf=(o&&o.pf)||1;ctx.drawImage(im,x-cx*(pf-1),y,im.naturalWidth/2,im.naturalHeight/2);}
+  for(const[n,x,y,o]of R.fgs||[]){const im=simg(n);if(!imgOk(im))continue;const pf=(o&&o.pf)||1,k=((o&&o.s)||.5)/RZ();ctx.drawImage(im,x-cx*(pf-1),y,im.naturalWidth*k,im.naturalHeight*k);}
   if(R.train)drawMetroTrain(R);
 }
 // поезд метро проносится по путям перед платформой: гул, тряска, фары
 function drawMetroTrain(R){
   const T=STY.mtrain,im=simg('metro_train');if(!imgOk(im))return;
-  const w=im.naturalWidth/2,h=im.naturalHeight/2;
+  const w=im.naturalWidth*.5/RZ(),h=im.naturalHeight*.5/RZ(); // y — верх поезда по референсу (R.train)
   if(T.x<-8e3){if(--T.wait<=0){T.x=-w-200;T.wait=1100+Math.random()*900;snd('roar');}return;}
-  T.x+=26;shake=Math.max(shake,3.5);if(frame%9===0)snd('fall');
-  const y=514-h;ctx.drawImage(im,T.x,y,w,h);
+  T.x+=30;shake=Math.max(shake,3.5);if(frame%9===0)snd('fall');
+  ctx.drawImage(im,T.x,R.train,w,h);
   if(T.x>R.w+200)T.x=-9e3;
 }
 function storyScreenFx(){
@@ -3007,7 +3027,7 @@ function storyHud(){
   if(pl.combo>=2&&!en.gone)txt(`${pl.combo} УДАРОВ`,30,108,26,'#e8c060','left');
   if(S.label){ctx.globalAlpha=Math.min(1,S.label.t/30);txt(S.label.s,W/2,44,20,'#efe6c8','center');ctx.globalAlpha=1;}
   if(S.near&&!S.cap.length&&!S.fade){
-    const x=pl.x-camX,y=pl.y-232,t=`${ctlLabel('g')} — ${S.near.label}`;ctx.font='bold 14px Arial';const w=ctx.measureText(t).width+20;
+    const z=RZ(),x=(pl.x-camX)*z,y=(pl.y-232)*z,t=`${ctlLabel('g')} — ${S.near.label}`;ctx.font='bold 14px Arial';const w=ctx.measureText(t).width+20;
     ctx.fillStyle='rgba(10,10,14,.75)';ctx.fillRect(x-w/2,y-18,w,26);ctx.strokeStyle='rgba(239,230,200,.7)';ctx.strokeRect(x-w/2,y-18,w,26);
     txt(t,x,y,14,'#efe6c8','center',true);
   }
@@ -3244,7 +3264,7 @@ function render(){
   ctx.save();
   if(shake>.5){ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);shake*=.85;}
   const menu=G.phase==='menu'||G.phase==='select'||G.phase==='stage'||G.phase==='net'||G.phase==='keys',cx=Math.round(menu?(WW-W)/2+Math.sin(frame*.004)*(WW-W)/2:camX);
-  ctx.save();ctx.translate(-cx,0);
+  ctx.save();if(G.mode===7&&!menu)ctx.scale(RZ(),RZ());ctx.translate(-cx,0); // прохождение: зум локации
   if(G.mode===7&&!menu)storyBack(cx);else drawArena();
   if(menu){ctx.restore();if(G.phase==='menu')drawMenu();else if(G.phase==='net')drawNet();else if(G.phase==='keys')drawKeys();else if(G.phase==='stage')drawStage();else drawSelect();ctx.restore();return;}
   for(const p of parts)if(p.st){ctx.globalAlpha=clamp(p.life/70,0,.85);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.size*1.3,p.y-p.size*.3,p.size*2.6,p.size*.6);}
