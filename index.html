@@ -374,7 +374,7 @@ const CH=[
 //    hit — номер кадра удара (до него — замах, после — возврат)
 // размер ячейки берётся из самой картинки при загрузке (cw, ch в таблице — только до загрузки)
 // версия картинок: менять при каждой замене спрайтов, иначе браузеры игроков показывают старые из кэша
-const AV='20261116b';
+const AV='20261117a';
 function sheet(src,frames,cw,ch,fps,o){
   const img=new Image(),a={img,frames,cw,ch,fps,...o};
   img.onload=()=>{a.cw=img.naturalWidth/frames;a.ch=img.naturalHeight;};
