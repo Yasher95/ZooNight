@@ -374,7 +374,7 @@ const CH=[
 //    hit — номер кадра удара (до него — замах, после — возврат)
 // размер ячейки берётся из самой картинки при загрузке (cw, ch в таблице — только до загрузки)
 // версия картинок: менять при каждой замене спрайтов, иначе браузеры игроков показывают старые из кэша
-const AV='20261114h';
+const AV='20261116a';
 function sheet(src,frames,cw,ch,fps,o){
   const img=new Image(),a={img,frames,cw,ch,fps,...o};
   img.onload=()=>{a.cw=img.naturalWidth/frames;a.ch=img.naturalHeight;};
@@ -2709,7 +2709,7 @@ const SDIFF=[
 // [картинка, x, y, {pf — параллакс}] в координатах мира (картинки переднего плана — в масштабе фона, на экран ×0.5).
 // kind 'in' — коридор, собранный из стен-ассетов одной высоты (масштаб SI), потолок с карнизом, пол рисуется.
 const ROOMS={
-  apt:{name:'КВАРТИРА 3B',kind:'img',bg:'loc_apt.jpg',w:1043,gy:470,al:40,ar:1003,z:.8,
+  apt:{name:'КВАРТИРА 3B',kind:'img',bg:'loc_apt.jpg',w:1043,gy:465,al:40,ar:1003,z:1.375, // рост коня — по референсу (258 px на экране)
     fgs:[['apt_fg_chair',-20,392,{pf:1.18}],['apt_fg_table',720,402,{pf:1.18}]],
     lights:[{x:795,y:112,r:200,c:'255,196,120',a:.28,fl:.006},{x:75,y:338,r:130,c:'140,180,255',a:.26,tv:1}],tint:'rgba(10,8,22,.18)',
     enter:['Нью-Йорк. Январь девяносто седьмого. Снег падал на город, как пепел на пьяницу, уснувшего с сигаретой.',
@@ -2756,7 +2756,7 @@ const ROOMS={
           lom:['Тяжёлая чугунная крышка. Голыми руками не поднять — нужен рычаг. Лом, монтировка, что-нибудь.']},
         lines:['Поддел крышку ломом. Чугун заскрежетал, как старая дверь в чужую жизнь.','Вниз вела ржавая лестница — прямо в заброшенный перегон.']},
       {id:'taxi',x0:1300,x1:1420,label:'такси',once:1,lines:['Таксист спал за рулём. Или умер. В этом районе разница небольшая.']}]},
-  bar:{name:'БАР «У РЖАВОГО»',kind:'img',bg:'../arena_bar.jpg',w:1634,gy:500,al:236,ar:1398,z:.8,tint:'rgba(20,10,20,.18)',
+  bar:{name:'БАР «У РЖАВОГО»',kind:'img',bg:'../arena_bar.jpg',w:1634,gy:508,al:236,ar:1398,z:1.117, // рост — по референсу (210 px)tint:'rgba(20,10,20,.18)',
     fgs:[['../arena_bar_fg',1387,419,{s:540/1184}]], // ящик и бочка арены бара (картинка в масштабе 1184 по высоте)
     lights:[{x:298,y:142,r:95,c:'255,214,140',a:.3,fl:.004,cone:1},{x:505,y:146,r:95,c:'255,220,150',a:.3,fl:.012,cone:1},{x:720,y:142,r:95,c:'205,255,190',a:.26,fl:.004,cone:1}],
     enter:['Бар «У Ржавого». Дым, джаз из сломанного автомата и двадцать глаз, которые сразу поняли, зачем я пришёл.'],
@@ -2994,12 +2994,13 @@ function storyFront(cx){
   for(const[n,x,y,o]of R.fgs||[]){const im=simg(n);if(!imgOk(im))continue;const pf=(o&&o.pf)||1,k=((o&&o.s)||.5)/RZ();ctx.drawImage(im,x-cx*(pf-1),y,im.naturalWidth*k,im.naturalHeight*k);}
   if(R.train)drawMetroTrain(R);
 }
-// поезд метро проносится по путям перед платформой: гул, тряска, фары
+// поезд метро проносится по путям перед платформой: звук проезда (assets/audio/metro_train.mp3), тряска
+const TRAIN_SND=new Audio('assets/audio/metro_train.mp3');TRAIN_SND.volume=.7;
 function drawMetroTrain(R){
   const T=STY.mtrain,im=simg('metro_train');if(!imgOk(im))return;
   const w=im.naturalWidth*.5/RZ(),h=im.naturalHeight*.5/RZ(); // y — верх поезда по референсу (R.train)
-  if(T.x<-8e3){if(--T.wait<=0){T.x=-w-200;T.wait=1100+Math.random()*900;snd('roar');}return;}
-  T.x+=30;shake=Math.max(shake,3.5);if(frame%9===0)snd('fall');
+  if(T.x<-8e3){if(--T.wait<=0){T.x=-w-200;T.wait=1100+Math.random()*900;if(!musicOff){TRAIN_SND.currentTime=0;TRAIN_SND.play().catch(()=>{});}}return;}
+  T.x+=30;shake=Math.max(shake,3);
   ctx.drawImage(im,T.x,R.train,w,h);
   if(T.x>R.w+200)T.x=-9e3;
 }
