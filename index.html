@@ -28,7 +28,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const down=new Set(),pressed=new Set();
 addEventListener('keydown',e=>{
   if(!e.repeat){down.add(e.code);pressed.add(e.code);lastDev='key';}
-  if(/Arrow|Space|Tab|Backspace|Numpad|Control/.test(e.code))e.preventDefault();
+  if(/Arrow|Space|Tab|Backspace|Numpad|Control|F2/.test(e.code))e.preventDefault();
   audioInit();
 });
 addEventListener('keyup',e=>down.delete(e.code));
@@ -1534,6 +1534,7 @@ function tick(net){
     return;
   }  if(G.phase==='net'){netMenu();return;}
   if(G.phase==='keys'){keysMenu();return;}
+  if(G.mode===7&&STY.cheat&&(pressed.has('Escape')||PAD[0].back)){STY.cheat=null;return;} // Esc закрывает чит-меню, а не прохождение
   if(!net&&(pressed.has('Escape')||PAD[0].back||PAD[1].back)){if(G.phase==='stage')toSelect();else G.phase='menu';return;}
   if(G.phase==='storydiff'){ // выбор сложности прохождения
     const n=IN[0],k=c=>!net&&pressed.has(c);
@@ -2968,8 +2969,48 @@ function useSpot(s){
   if(s.lines&&!seen)storyCap(s.lines,go);else if(go)go();else if(s.lines)S.th={s:s.lines[s.lines.length-1],t:200};
 }
 // ---------- ход игры ----------
+// ---------- чит-меню прохождения: F2 или ` — выбор локации (сюжетные флаги и стычки до неё — как пройденные) ----------
+// CHEAT_ORDER — порядок прохождения и флаги, которые даёт каждая локация.
+const CHEAT_ORDER=[['apt',['note']],['hall',[]],['street',[]],['bar',['boss','lom']],['metro',['guard']],
+  ['c2_tunnel',[]],['c2_booth',['key']],['c2_depot',[]],['c2_wagon',['knives','knifer']],['c2_sewer',[]],['c2_old',[]],
+  ['c2_market',['pass']],['c2_lab',[]],['c2_or',['boss2']]];
+function cheatItems(){return[...CHEAT_ORDER.map(([id])=>({id,s:ROOMS[id].name})),{id:'hp',s:'Полное здоровье'},{id:'god',s:'Бессмертие: '+(STY.god?'ВКЛ':'выкл')}];}
+function cheatTick(){
+  const S=STY,C=S.cheat,n=IN[0],L=cheatItems();
+  if(pressed.has('Escape')||pressed.has('F2')||pressed.has('Backquote')||n.k1&&!C.k1){S.cheat=null;return;}
+  C.k1=n.k1;
+  const up=pressed.has('ArrowUp')||pressed.has('KeyW')||PAD[0].u&&!C.pu,dn=pressed.has('ArrowDown')||pressed.has('KeyS')||PAD[0].d&&!C.pd;C.pu=PAD[0].u;C.pd=PAD[0].d;
+  if(up){C.i=(C.i+L.length-1)%L.length;snd('ui_sel');}if(dn){C.i=(C.i+1)%L.length;snd('ui_sel');}
+  const go=pressed.has('Enter')||pressed.has('Space')||n.p1&&!C.p1;C.p1=n.p1;
+  if(!go)return;
+  const it=L[C.i];snd('bell');
+  if(it.id==='hp'){F[0].hp=F[0].hpLag=100;return;}
+  if(it.id==='god'){S.god=!S.god;return;}
+  cheatGo(it.id);S.cheat=null;
+}
+function cheatGo(id){
+  const S=STY,k=CHEAT_ORDER.findIndex(c=>c[0]===id);
+  S.flags={};S.done={};S.used={};
+  for(let i=0;i<k;i++){const[r,fl]=CHEAT_ORDER[i];for(const f of fl)S.flags[f]=1;(ROOMS[r].fights||[]).forEach((_,j)=>S.done[r+j]=1);S.seen[r]=1;}
+  Object.assign(S,{cap:[],after:null,search:null,mg:null,fade:null,title:null,fight:null,lock:null,koT:0,dead:0,chap:id.startsWith('c2_')?2:1});
+  const R=ROOMS[id];F[0].hp=F[0].hpLag=Math.max(F[0].hp,STY.D.hp);storyRoom(id,(R.al||50)+40,1);S.th={s:'ЧИТ: '+R.name,t:120};
+}
+function drawCheat(){
+  const C=STY.cheat,L=cheatItems(),lh=24,h=L.length*lh+70,y0=Math.max(10,(H-h)/2),x0=W/2-230;
+  ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(16,14,12,.95)';ctx.fillRect(x0,y0,460,h);ctx.strokeStyle='#e8c060';ctx.lineWidth=2;ctx.strokeRect(x0,y0,460,h);
+  txt('ЧИТЫ · ВЫБОР ЛОКАЦИИ',W/2,y0+30,20,'#e8c060');
+  L.forEach((it,i)=>{const y=y0+58+i*lh,sel=i===C.i,cur=it.id===STY.room;
+    if(sel){ctx.fillStyle='rgba(232,192,96,.18)';ctx.fillRect(x0+10,y-17,440,lh-2);}
+    const pre=i<CHEAT_ORDER.length?(it.id.startsWith('c2_')?'II · ':'I · '):'';
+    txt(pre+it.s+(cur?'  ◂ здесь':''),x0+26,y,15,sel?'#fff':cur?'#e8c060':'#bbb','left');});
+  txt(`↑↓ — выбрать · Enter / ${ctlLabel('p1')} — перейти · F2 / Esc — закрыть`,W/2,y0+h-10,12,'#999');
+}
 function storyTick(){
   const S=STY,R=ROOMS[S.room],pl=F[0],en=F[1];
+  if(S.god&&pl.hp<100)pl.hp=pl.hpLag=100;
+  if(S.cheat){cheatTick();return true;}
+  if(pressed.has('F2')||pressed.has('Backquote')){S.cheat={i:Math.max(0,CHEAT_ORDER.findIndex(c=>c[0]===S.room)),k1:IN[0].k1,p1:IN[0].p1};snd('ui_sel');return true;}
   const ok=IN[0].p1||IN[0].k2||IN[0].s||pressed.has('Enter')||pressed.has('Space')||PAD[0].start||PAD[0].fx;
   if(S.title){if(--S.title.t<=0)S.title=null;else if(ok&&S.title.t<S.title.max-40)S.title.t=Math.min(S.title.t,24);return true;}
   if(S.fade){const f=S.fade;f.t++;if(f.t===f.mid&&f.fn)f.fn();if(f.t>=f.len)S.fade=null;return true;}
@@ -3486,6 +3527,7 @@ function drawMg(){if(STY.mg.type==='knife')drawKnife();else drawPipe();
   if(STY.mg.wait>0)txt(STY.mg.type==='knife'?'ГОТОВЬСЯ…':'ДЕРЖИСЬ…',W/2,H/2,48,'#efe6c8');}
 function storyHud(){
   const S=STY,pl=F[0],en=F[1];
+  if(S.cheat){if(S.search)drawSearch();else if(S.mg)drawMg();drawCheat();return;}
   if(S.search){drawSearch();if(!S.cap.length)return;}
   else if(S.mg){drawMg();if(!S.cap.length)return;}
   // здоровье
