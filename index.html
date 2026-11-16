@@ -16,7 +16,7 @@ canvas{width:min(100vw,177.78vh);height:auto;display:block}
 const W=960,H=540;
 let GY=500; // GY — линия пола: середина зоны, размеченной на арене (у каждой арены своя, см. ARENAS)
 // WW — ширина арены (мир шире экрана); camX — левый край экрана в мире. Бойцы не расходятся дальше экрана.
-const WW=1634,SPAN=W-90;
+let WW=1634;const SPAN=W-90; // в прохождении WW — ширина текущей локации
 // AL..AR — где можно стоять: левее и правее пол уходит под стену, столы и бочки (картинка шире игровой зоны)
 let AL=236,AR=1398; // края зоны для ходьбы с запасом на ширину бойца (у каждой арены свои, см. ARENAS)
 let camX=(WW-W)/2;
@@ -270,7 +270,8 @@ function musicSync(){
   const ua=navigator.userActivation;
   if(!ac&&!(ua&&ua.hasBeenActive)&&musicTry++>0)return;
   const am=(ARENAS[G.arena||0].music)||MUSIC,fm=am.bad?MUSIC:am;
-  const on=G.phase==='select'||G.phase==='stage'?MUSIC_SEL:G.phase==='menu'||G.phase==='net'||G.phase==='keys'?MUSIC_MENU:fm;
+  const on=G.phase==='select'||G.phase==='stage'?MUSIC_SEL:G.phase==='menu'||G.phase==='net'||G.phase==='keys'?MUSIC_MENU:
+    G.mode===7?(STY.room==='bar'?MUSIC:MUSIC_MENU):fm; // прохождение: в баре — музыка бара, в остальных местах — тихая тема меню
   for(const m of[MUSIC,MUSIC_SEL,MUSIC_MENU,MUSIC_HOSP])if(m!==on&&!m.paused)m.pause();
   if(musicOff||!VID.done){if(!on.paused)on.pause();} // во время победного ролика музыка молчит
   else if(on.paused){if(on===MUSIC_SEL||on===MUSIC_MENU)on.currentTime=0;on.play().catch(()=>{});}
@@ -713,6 +714,7 @@ function vidStart(ch){
 }
 function vidStop(){if(VID.el)VID.el.pause();VID.el=null;VID.done=true;}
 function startMatch(){
+  WW=1634;
   const A=arena();GY=A.gy;AL=A.al||236;AR=A.ar||1398;
   F=[mkF(0,G.sel[0],false),mkF(1,G.sel[1],G.mode===1)];
   if(G.mode===3){ // соперник в тренировке — второй герой (ведёт себя как манекен: стоит, сидит или блокирует)
@@ -734,6 +736,7 @@ function startRound(){
   camX=camTarget();
 }
 function endRound(w,timeout){
+  if(G.mode===7){storyKO(w);return;} // прохождение: нокаут — свой разбор (враг выбыл / игрок проиграл)
   if(G.phase!=='fight'||G.mode===3)return;
   // решающий нокаут: противник с нулём здоровья стоит ошеломлённым, победитель может запустить ультра комбо (спецприём)
   if(w&&!timeout&&w.wins+1>=2){
@@ -846,7 +849,7 @@ function techThrow(a,d){
 function doThrow(a,d){
   const dir=a.facing,dmg=(a.ch.tdown?14:12)*a.ch.power*DMG;
   a.combo=1;a.comboDmg=dmg;a.comboT=110;a.usedSp=[];
-  d.hp-=dmg*(d.ch.def||1);d.jug=0;d.usedWB=d.usedGB=d.wb=d.gbPending=d.usedDaze=false;d.dazeT=0;
+  d.hp-=dmg*(d.ch.def||1)*(d.dm||1);d.jug=0;d.usedWB=d.usedGB=d.wb=d.gbPending=d.usedDaze=false;d.dazeT=0;
   a.energy=Math.min(100,a.energy+4);d.energy=Math.min(100,d.energy+3);
   a.state='attack';a.mname='throwEnd';a.move=M.throwEnd;a.at=0;a.seq='';a.hitDone=true;a.contactAt=-1;a.locked=false;
   d.state='hit';d.stateT=30;d.flash=5;d.y=GY-1;d.vy=a.ch.tdown?3:-8;d.vx=dir*(a.ch.tdown?2:7);d.launched=true;d.buf=newBuf(); // питбуль валит на пол
@@ -891,7 +894,7 @@ function endRave(a,d,full,ko){
 function raveHit(a,d,base,heavy){
   const g=a.gr,dmg=base*a.ch.power*Math.max(.15,1-.08*a.combo)*DMG;
   a.combo++;a.comboT=110;a.maxCombo=Math.max(a.maxCombo||0,a.combo);a.comboDmg+=dmg;
-  d.hp-=dmg*(d.ch.def||1);d.flash=4;g.ht=9;g.jolt=7;
+  d.hp-=dmg*(d.ch.def||1)*(d.dm||1);d.flash=4;g.ht=9;g.jolt=7;
   a.energy=Math.min(100,a.energy+2);
   const hx=d.x-g.side*14,hy=d.y-95;
   hitstop=heavy?6:2;shake=Math.max(shake,heavy?12:4);
@@ -962,7 +965,7 @@ function endBite(a,d,full,ko){
 function biteHit(a,d,base,heavy){
   const g=a.gr,dmg=base*a.ch.power*(a.rage>0?1.2:1)*Math.max(.15,1-.08*a.combo)*DMG;
   a.combo++;a.comboT=110;a.maxCombo=Math.max(a.maxCombo||0,a.combo);a.comboDmg+=dmg;
-  d.hp-=dmg*(d.ch.def||1);d.flash=4;g.ht=8;d.anKey=null;
+  d.hp-=dmg*(d.ch.def||1)*(d.dm||1);d.flash=4;g.ht=8;d.anKey=null;
   a.energy=Math.min(100,a.energy+2);
   const hx=d.x-g.side*12,hy=d.y-150;
   hitstop=heavy?6:3;shake=Math.max(shake,heavy?12:5);
@@ -1047,7 +1050,7 @@ function updGrab(a,d){
     g.n++;
     const dmg=GR.dmg[g.n-1]*a.ch.power*Math.max(.15,1-.08*a.combo)*DMG;
     a.combo++;a.comboT=110;a.maxCombo=Math.max(a.maxCombo||0,a.combo);a.comboDmg+=dmg;
-    d.hp-=dmg*(d.ch.def||1);d.jug++;d.flash=5;
+    d.hp-=dmg*(d.ch.def||1)*(d.dm||1);d.jug++;d.flash=5;
     const cx=clamp(a.x-g.side*100,AL-10,AR+10);
     hitstop=7;shake=Math.max(shake,11+g.n*3);
     burst(cx,GY,'#cfcfcf',18,7);blood(cx,GY-14,a.facing,26);snd('hit');snd('fall');voice(d,'v_hurt');voice(a,'v_atk');
@@ -1135,7 +1138,7 @@ function resolveHit(a,d,m,dir,isProj,ender){
   }
   // броня (тяжёлые удары питбуля): одно попадание на замахе не прерывает удар — половина урона, без оглушения
   if(!canBlock&&d.state==='attack'&&d.move.armor&&d.at<d.move.su+d.move.ac&&!d.armUsed&&d.y>=GY){
-    d.armUsed=true;d.hp=Math.max(1,d.hp-(m.dmg||0)*a.ch.power*DMG*.5*(d.ch.def||1));d.flash=3;
+    d.armUsed=true;d.hp=Math.max(1,d.hp-(m.dmg||0)*a.ch.power*DMG*.5*(d.ch.def||1)*(d.dm||1));d.flash=3;
     hitstop=5;shake=Math.max(shake,6);burst(hx,hy,'#ff9a3c',12,5);snd('block');
     d.msg='БРОНЯ!';d.msgC='#ff9a3c';d.msgT=frame+40;a.energy=Math.min(100,a.energy+2);return;
   }
@@ -1145,7 +1148,7 @@ function resolveHit(a,d,m,dir,isProj,ender){
   if(m.special)a.usedSp.push(isProj?'proj':a.mname);
   a.combo++;a.comboT=110;a.maxCombo=Math.max(a.maxCombo||0,a.combo);
   const scale=Math.max(.15,1-.08*(a.combo-1)),dmg=m.dmg*a.ch.power*scale*DMG*(a.rage>0&&!isProj?1.2:1); // ярость питбуля — +20%
-  d.hp-=dmg*(d.ch.def||1);a.comboDmg+=dmg;
+  d.hp-=dmg*(d.ch.def||1)*(d.dm||1);a.comboDmg+=dmg;
   a.energy=Math.min(100,a.energy+4);d.energy=Math.min(100,d.energy+3); // шкала копится только действиями
   const air=d.y<GY,atWall=d.x<=AL+2||d.x>=AR-2;
   // на земле оглушение на кадр короче восстановления атакующего: без отмены продолжить нельзя (минус 1)
@@ -1206,6 +1209,7 @@ function updF(f,o,inp){
       }else{
         f.crouching=false;
         const dir=(inp.r?1:0)-(inp.l?1:0);
+        if(o.gone&&dir)f.facing=dir; // соперника нет — боец смотрит туда, куда идёт
         f.running=!!inp.run&&dir===f.facing; // бег только вперёд
         f.vx=dir*f.ch.speed*(f.running?f.ch.run||1.75:dir===f.facing?1:.8);
         f.state=dir?'walk':'idle';
@@ -1303,7 +1307,7 @@ function updF(f,o,inp){
     f.x=clamp(f.x,AL,AR);
   }
   // край экрана: дальше, чем на экран, бойцы не расходятся (стена с отскоком — только край арены)
-  if(f.state!=='grabbed'&&f.state!=='thrown')f.x=clamp(f.x,o.x-SPAN,o.x+SPAN);
+  if(f.state!=='grabbed'&&f.state!=='thrown'&&!o.gone)f.x=clamp(f.x,o.x-SPAN,o.x+SPAN);
 }
 
 function targetPose(f){
@@ -1463,7 +1467,7 @@ function world(live){
   }else{
     const ins=F.map((f,i)=>!live?EMPTY:TUT.demo&&i===0&&G.mode>=3?tutorInput(f,F[1]):f.dummy?(G.tut&&G.tut.din?G.tut.din(f,F[1-i]):DUMMY_IN[G.dummy||0]):f.cpu?aiInput(f,F[1-i]):IN[i]);
     const k=frame&1; // порядок хода чередуется каждый кадр — ни у одной стороны нет преимущества
-    updF(F[k],F[1-k],ins[k]);updF(F[1-k],F[k],ins[1-k]);
+    for(const j of[k,1-k])if(!F[j].gone)updF(F[j],F[1-j],ins[j]); // gone — соперника нет (прохождение между стычками)
     resolvePending();
     const a=F[0],b=F[1],out=['ko','down','grab','grabbed','throw','thrown'];
     if(Math.abs(a.y-b.y)<110&&!out.includes(a.state)&&!out.includes(b.state)&&a.alpha>=1&&b.alpha>=1){
@@ -1493,6 +1497,7 @@ function world(live){
     if(p.bl&&p.vy>0&&p.y>=p.gy){p.st=1;p.y=p.gy;p.life=200+Math.random()*160;p.x=clamp(p.x,AL-40,AR+40);} // капля упала — пятно на полу
   }
   parts=parts.filter(p=>p.life>0);
+  if(G.mode===7){storyCam();return;}
   camX+=(camTarget()-camX)*.16; // камера плавно идёт за серединой между бойцами
   const lo=Math.max(F[0].x,F[1].x)-W+45,hi=Math.min(F[0].x,F[1].x)-45; // но никого не оставляет за краем экрана
   if(lo<=hi)camX=clamp(camX,lo,hi);
@@ -1511,13 +1516,14 @@ function tick(net){
     if(demoAny()){G.mode=1;G.phase='menu';G.mIdle=0;G.mGo=0;G.demoExit=false;TUT.demo=false;pressed.clear();return;}
   }
   if(G.phase==='menu'){
+    WW=1634; // после прохождения мир снова размером с арену
     if(G.mGo>0){if(--G.mGo===0)menuDo(MENU_BTN[G.mi].act);return;} // кнопка «нажата» — пауза, потом переход
     if(demoAny())G.mIdle=0;else if((G.mIdle=(G.mIdle||0)+1)>300&&!net){demoStart();return;} // 5 с без нажатий — демо
     const n=IN[0],p=PAD[0],k=c=>pressed.has(c);
     G.mi=G.mi||0;
     if(n.uE||k('ArrowUp')){G.mi=(G.mi+MENU_BTN.length-1)%MENU_BTN.length;samp('ui_sel',.6,1,0);}
     if(n.dE||k('ArrowDown')){G.mi=(G.mi+1)%MENU_BTN.length;samp('ui_sel',.6,1,0);}
-    for(let d=1;d<=6;d++)if(k('Digit'+d)){G.mi=MENU_BTN.findIndex(b=>b.act===d);G.mGo=10;snd('bell');} // только верхний ряд цифр: нампад — кнопки ударов
+    for(let d=1;d<=7;d++)if(k('Digit'+d)){G.mi=MENU_BTN.findIndex(b=>b.act===d);G.mGo=10;snd('bell');} // только верхний ряд цифр: нампад — кнопки ударов
     if(!G.mGo&&(k('Enter')||k('Space')||p.fx||p.start||n.p1||G.mClick)){G.mGo=10;snd('bell');}
     G.mClick=false;
     return;
@@ -1557,6 +1563,7 @@ function tick(net){
     world(false);
     if(G.t>=70){G.phase='fight';G.t=0;snd('bell');}
   }else if(G.phase==='fight'){
+    if(G.mode===7){if(!storyTick())world(true);return;} // прохождение: подписи, двери и стычки — в storyTick
     world(true);
     if(G.mode===3){if(G.tut)lessonTick();else training();}
     else if(G.phase==='fight'&&--G.timer<=0){
@@ -1701,6 +1708,7 @@ function demoTick(){
 function menuDo(a){
   if(a===1){G.mode=1;toSelect();}
   else if(a===2){G.mode=2;toSelect();}
+  else if(a===7){G.tut=null;storyStart();} // прохождение
   else if(a===3||a===6){ // тренировка: выбор бойца, потом арена; обучение: выбор бойца — и сразу уроки
     G.mode=3;G.tut=null;G.tutPick=a===6;G.sel=[GRID.includes(G.trainCh)?G.trainCh:GRID[0],0];toSelect();}
   else if(a===4){G.phase='net';NET.ui='';NET.msg='';}
@@ -2583,6 +2591,7 @@ function txt(s,x,y,size,col,align='center',plain){
   ctx.strokeStyle='#000';ctx.strokeText(s,x,y);ctx.fillStyle=col;ctx.fillText(s,x,y);
 }
 function hud(){
+  if(G.mode===7){storyHud();return;}
   for(const f of F){
     const L=f.i===0,w=380,x=L?40:W-40-w;
     ctx.fillStyle='#000';ctx.fillRect(x-3,27,w+6,28);
@@ -2659,17 +2668,355 @@ function drawTraining(){
     });
   }
 }
+// ======================= ПРОХОЖДЕНИЕ =======================
+// Сюжет: Нью-Йорк, зима 1997-го. Конь ищет свою девушку Ламу — она торговала запрещёнкой, её похитили бандиты.
+// Нуар в духе графических новелл: подписи-«панели», снег, неон, тёмные интерьеры. Глава 1: квартира → коридор →
+// улица → бар «У Ржавого» → спуск в метро.
+// Локации шире экрана, собраны из ассетов assets/story/* (вырезаны из листов на зелёном фоне: tools/props_cut.py по
+// tools/story_props.json). Камера идёт за игроком; на стычке экран запирается, пока бандиты не лягут. Схватки — тот же бой
+// 1 на 1: F[1] — текущий враг, между стычками его нет (gone). Осмотр и двери — кнопка захвата (L2 / Num1).
+const SIMG={},simg=n=>SIMG[n]||(SIMG[n]=imgOf('assets/story/'+n+'.png'));
+const SKY=imgOf('assets/story/bg_skyline.jpg');
+const SI=.8; // масштаб интерьеров: дверь ≈ 2,1 м при росте бойца ≈ 1,85 м (координаты комнат ниже заданы для .86 и пересчитываются)
+const STY={on:false,room:'apt',cap:[],used:{},flags:{},done:{},seen:{},snow:[],train:{x:-9e3,wait:300}};
+const FOES={
+  shest:{ch:6,alt:1,name:'ШЕСТЁРКА',skill:.26,dm:1.55},
+  thug:{ch:6,alt:1,name:'ГРОМИЛА',skill:.4,dm:1.1},
+  boss:{ch:6,alt:0,name:'РЖАВЫЙ',skill:.52,dm:.95}
+};
+// пропы: [имя, x (левый край), {by — низ, top — верх (подвешено), s — масштаб, pf — параллакс переднего плана}]
+const ROOMS={
+  apt:{name:'КВАРТИРА 4A',kind:'in',w:2100,gy:486,wb:472,ceil:150,floor:'wood',tint:'rgba(14,12,30,.40)',
+    walls:Array(8).fill('i_wall_paper'),
+    hang:[['i_cork',640,236],['i_window',1130,232],['i_wall_cabinets',1590,262],['i_fan',520,52],['i_bulb',1396,120]],
+    back:[['i_bookshelf2',20],['i_sofa2',220],['i_rug',300,{by:506}],['i_coffeetable',290,{by:494}],['i_tv',660],['i_dresser_lamp',840],
+      ['i_bed',1080],['i_laundry',1380,{by:482}],['i_fridge',1460],['i_kitchen',1585],['i_stove',1805],['i_door_apt',1915]],
+    front:[['i_bags',1180,{by:600,pf:1.25}],['i_newspapers',420,{by:590,pf:1.3}]],
+    lights:[{x:1406,y:236,r:320,c:'255,196,120',a:.46,fl:.006,cone:1},{x:1215,y:320,r:200,c:'110,140,255',a:.20},
+      {x:735,y:400,r:160,c:'140,180,255',a:.32,tv:1},{x:940,y:236,r:150,c:'255,190,110',a:.36}],
+    enter:['Нью-Йорк. Январь девяносто седьмого. Снег падал на город, как пепел на пьяницу, уснувшего с сигаретой.',
+      'Я вернулся домой в три ночи. Дверь была не заперта. В квартире пахло её духами — и чужим потом.',
+      'Лама. Моя девушка. Она торговала тем, о чём не пишут в газетах. Я говорил ей: однажды за ней придут.',
+      'Они пришли.'],
+    spots:[
+      {id:'pills',x0:20,x1:230,label:'аптечка',heal:40,gone:1,lines:['Обезболивающее на полке. Две таблетки — и боль становится чужой. Ночь будет длинной.']},
+      {id:'sofa',x0:240,x1:620,label:'диван',once:1,lines:['Диван ещё тёплый. На полу — её заколка и окурок дешёвой сигары.','Лама не курила сигар.']},
+      {id:'tv',x0:660,x1:810,label:'телевизор',once:1,lines:['Телевизор шипел помехами. Ночной выпуск: «Война банд в Бронксе. Третий труп за неделю».','Город шептал мне, что я опоздал.']},
+      {id:'note',x0:840,x1:1040,label:'записка',flag:'note',lines:['На комоде, под её лампой, — записка. Чужой почерк, кривые буквы:','«Должок за товар. Не ищи». Вместо подписи — нарисованная кость.',
+        'Псы Ржавого. Ржавый держит бар на углу. Если кто и знает, где она, — его шестёрки.']},
+      {id:'bed',x0:1080,x1:1370,label:'кровать',once:1,lines:['Постель смята. На подушке — кровь. Немного.','Достаточно, чтобы у меня свело челюсть.']},
+      {id:'fridge',x0:1460,x1:1580,label:'холодильник',once:1,lines:['В холодильнике — молоко и пачка денег, перетянутая резинкой. Её доля.','Деньги не взяли. Значит, им нужна была она.']},
+      {id:'door',x0:1915,x1:2080,label:'выйти',to:'hall',at:140,face:1,need:'note',locked:['Уйти просто так? Сначала понять, кто это сделал. Осмотрись.']}]},
+  hall:{name:'КОРИДОР',kind:'in',w:3241,gy:486,wb:472,ceil:150,floor:'tile',tint:'rgba(12,18,24,.44)',
+    walls:['i_door3b','i_wall_ext','i_hall_doors','i_meters','i_elevator_g','i_firehose','i_wall_paper','i_stairs','i_wall_fireexit'],
+    hang:[['i_fluor',300,150],['i_fluor',1250,150],['i_fluor',2200,150],['i_camera',1540,176]],
+    back:[['i_newspapers',600,{by:484}],['i_bags',1650,{by:484}],['i_trashcan',2240,{by:484}],['i_junkbox',2620,{by:486}]],
+    front:[['i_boxes',1000,{by:610,pf:1.25}],['i_trashcan',2500,{by:600,pf:1.3}]],
+    lights:[{x:470,y:216,r:280,c:'200,230,255',a:.36,fl:.01,cone:1},{x:1420,y:216,r:280,c:'200,230,255',a:.34,fl:.03,cone:1},
+      {x:2370,y:216,r:280,c:'200,230,255',a:.32,fl:.008,cone:1},{x:3170,y:250,r:110,c:'255,70,60',a:.3}],
+    enter:['В коридоре пахло мочой и страхом. Лампа мигала, как пульс умирающего.'],
+    fights:[{x:1080,lock:[740,1700],foes:['shest','shest'],pre:['У лифта курили двое. Ждали. Меня.','— Слышь, Конь, — сказал один. — Ржавый передаёт: забудь свою ламу.'],
+      post:['Они знали, что я приду. Значит, это не случайность. Это сообщение.']}],
+    spots:[
+      {id:'back',x0:20,x1:270,label:'домой',to:'apt',at:1840,face:-1},
+      {id:'meters',x0:1430,x1:1700,label:'щиток',once:1,lines:['Щиток искрит. Весь дом держится на синей изоленте и молитвах.']},
+      {id:'lift',x0:1720,x1:2010,label:'лифт',once:1,lines:['Лифт не работает с восемьдесят девятого. Как и полиция в этом районе.']},
+      {id:'pills',x0:2210,x1:2400,label:'обезболивающее',heal:35,gone:1,lines:['Чья-то заначка за мусорным ведром. Пузырёк обезболивающего. Никто не будет искать.']},
+      {id:'stairs',x0:2470,x1:2800,label:'лестница',once:1,lines:['Лестница вниз уходит в темноту. Пожарный выход ближе.']},
+      {id:'exit',x0:3090,x1:3236,label:'выйти на улицу',to:'street',at:300,face:1,once:1,lines:['Пожарный выход. Холод ударил в лицо, как мокрое полотенце.']}]},
+  street:{name:'УЛИЦА',kind:'out',w:4000,gy:498,bb:432,floor:'street',tint:'rgba(16,24,48,.42)',snow:1,el:[560,1810,44],
+    bld:[['s_deli',0],['s_pawnshop',640],['s_watertower',1960,{by:160}],['s_bar',1880],['s_hotel',2430],['s_neon_hotel',2408,{top:120}]],
+    struct:[['s_el_bridge',560,{top:44}],['s_el_bridge',974,{top:44}],['s_el_bridge',1388,{top:44}],
+      ['s_pillar',600,{by:446}],['s_pillar',1050,{by:446}],['s_el_stairs',1180,{by:446}],['s_pillar',1460,{by:446}],['s_pillar',1720,{by:446}]],
+    back:[['s_pole',560,{by:440}],['s_dumpster2',535,{by:452}],['s_lamp',470,{by:446}],['s_manhole',880,{by:520}],['s_papers',1400,{by:518}],
+      ['s_taxi',300,{by:474}],['s_van',1290,{by:476}],['s_can_full',1780,{by:452}],['s_box',1720,{by:452}],['s_crate',2370,{by:452}],
+      ['s_dumpster',2860,{by:454}],['s_lamp2',3110,{by:446}],['s_wreck',2900,{by:474}],['s_subway',3240,{by:452}],
+      ['s_pole2',3600,{by:442}],['s_junk',3640,{by:456}],['s_trashpile',3740,{by:458}],['s_gate',3730,{by:448}],['s_papers2',2660,{by:522}]],
+    front:[['s_bags',360,{by:600,pf:1.25}],['s_tires',1500,{by:610,pf:1.3}],['s_bags',2700,{by:605,pf:1.3}],['s_can',3500,{by:610,pf:1.3}]],
+    lights:[{x:538,y:96,r:260,c:'255,210,150',a:.40,cone:1,refl:1},{x:3136,y:30,r:320,c:'255,170,80',a:.42,cone:1,refl:1,fl:.004},
+      {x:150,y:228,r:110,c:'255,60,70',a:.5,neon:1,refl:1},{x:272,y:228,r:100,c:'80,140,255',a:.5,neon:1,refl:1},{x:415,y:228,r:110,c:'255,60,70',a:.45,neon:1},
+      {x:745,y:265,r:90,c:'255,70,80',a:.45,neon:1,refl:1},{x:948,y:265,r:90,c:'255,215,90',a:.45,neon:1,refl:1},
+      {x:2010,y:198,r:150,c:'255,50,70',a:.55,neon:1,refl:1},{x:2142,y:198,r:120,c:'70,140,255',a:.5,neon:1},
+      {x:2436,y:222,r:120,c:'255,190,110',a:.4,neon:1,refl:1},{x:3517,y:206,r:120,c:'90,255,150',a:.45,refl:1},{x:3258,y:228,r:90,c:'90,255,150',a:.35}],
+    enter:['Улица встретила меня снегом и неоном. Этот город никогда не спит — он просто лежит с открытыми глазами.'],
+    fights:[{x:860,lock:[620,1580],foes:['thug'],pre:['Под эстакадой меня ждали. Ржавый не жалел людей — у него их было больше, чем у меня терпения.']},
+      {x:2600,lock:[2240,3200],foes:['shest','thug'],pre:['Двое вышли из тени у отеля. Снег на их плечах не таял.'],post:['Бар «У Ржавого» — за спиной. Свет в окне горел, как приглашение на похороны.']}],
+    spots:[
+      {id:'taxi',x0:330,x1:740,label:'такси',once:1,lines:['Таксист спал за рулём. Или умер. В этом районе разница небольшая.']},
+      {id:'pawn',x0:790,x1:890,label:'ломбард',once:1,lines:['Ломбард закрыт. Табличка «Вернусь через 5 минут» висит здесь с прошлой осени.']},
+      {id:'el',x0:1180,x1:1340,label:'надземка',once:1,lines:['Станция надземки закрыта на ремонт. Этот город чинит всё, кроме себя.']},
+      {id:'bar',x0:2180,x1:2310,label:'войти в бар',to:'bar',at:300,face:1},
+      {id:'pills',x0:2860,x1:3070,label:'обезболивающее',heal:35,gone:1,lines:['В мусорном баке — нетронутый пузырёк обезболивающего. Удача любит тех, кому нечего терять.']},
+      {id:'subway',x0:3260,x1:3540,label:'спуститься в метро',need:'boss',end:1,locked:['Метро. Мне туда — я это чувствовал. Но сначала — бар Ржавого.'],
+        lines:['Ступени вниз, в темноту. Где-то там, под городом, была она.','И я шёл за ней.']}]},
+  bar:{name:'БАР «У РЖАВОГО»',arena:1,w:1634,gy:500,al:236,ar:1398,tint:'rgba(20,10,20,.22)',
+    enter:['Бар «У Ржавого». Дым, джаз из сломанного автомата и двадцать глаз, которые сразу поняли, зачем я пришёл.'],
+    fights:[{x:420,lock:[0,1634],foes:['boss'],pre:['— Конь, — Ржавый оскалился. — Пришёл за своей ламой? Она уже далеко, приятель.','— Тогда ты скажешь мне, где именно.'],
+      post:['Ржавый сплюнул кровь вместе с правдой.','— Её увезли... в метро. Канал-стрит, заброшенный перегон. Там лаборатория Дока...','— Док не отпустит её живой, Конь. Никого не отпускает.',
+        'Я оставил его на полу. Ночь только начиналась.'],then:()=>{STY.flags.boss=1;}}],
+    spots:[{id:'out',x0:236,x1:340,label:'выйти на улицу',to:'street',at:2276,face:1}]}
+};
+// координаты интерьеров заданы под масштаб .86 — пересчёт под SI (один раз)
+(function(){
+  const k=SI/.86,K=new Set(Object.keys(ROOMS).filter(id=>ROOMS[id].kind==='in'));
+  for(const id of K){const R=ROOMS[id];R.w=Math.round(R.w*k);
+    for(const L of['hang','back','front'])for(const p of R[L]||[])p[1]=Math.round(p[1]*k);
+    for(const s of R.spots||[]){s.x0*=k;s.x1*=k;}
+    for(const f of R.fights||[]){f.x*=k;f.lock=f.lock.map(v=>v*k);if(f.lock[1]-f.lock[0]<W){f.lock[1]=f.lock[0]+W;}}
+    for(const l of R.lights||[])l.x*=k;}
+  for(const R of Object.values(ROOMS))for(const s of R.spots||[])if(s.to&&K.has(s.to))s.at*=k;
+  ROOMS.apt.start=1760*k;
+})();
+// ---------- запуск, локации, враги ----------
+function storyStart(){
+  G.mode=7;G.arena=0;G.sel=[4,6];G.tut=null;
+  F=[mkF(0,4,false),mkF(1,6,true)];startRound();
+  G.phase='fight';G.t=99;G.timer=1e9;
+  Object.assign(STY,{on:true,cap:[],after:null,used:{},flags:{},done:{},seen:{},fade:null,end:null,dead:0,koT:0,fight:null,lock:null,th:null,near:null,
+    title:{a:'ГЛАВА ПЕРВАЯ',b:'ПУСТАЯ КВАРТИРА',t:260,max:260},train:{x:-9e3,wait:300},pdm:.8});
+  for(const R of Object.values(ROOMS))for(const L of['walls','hang','back','front','bld','struct'])for(const p of R[L]||[])simg(Array.isArray(p)?p[0]:p);
+  F[0].hp=100;storyRoom('apt',ROOMS.apt.start,-1);
+}
+function foeGone(){Object.assign(F[1],{gone:true,alpha:0,state:'idle',x:-9e3,vx:0,vy:0,y:GY,combo:0,gr:null,move:null});}
+function storyRoom(id,x,face){
+  const R=ROOMS[id],p=F[0];STY.room=id;WW=R.w;GY=R.gy;AL=R.al||50;AR=R.ar||R.w-50;
+  Object.assign(p,{x,y:GY,vx:0,vy:0,state:'idle',stateT:0,facing:face||1,move:null,gr:null,combo:0,dm:STY.pdm,alpha:1,crouching:false});
+  foeGone();STY.lock=null;STY.fight=null;STY.koT=0;projs=[];parts=[];hitstop=0;
+  camX=clamp(x-W*.45,0,Math.max(0,WW-W));
+  STY.cp={room:id,x,face,hp:p.hp};STY.label={s:R.name,t:150};
+  if(!STY.seen[id]){STY.seen[id]=1;if(R.enter)storyCap(R.enter);}
+}
+function spawnFoe(key){
+  const d=FOES[key],e=mkF(1,d.ch,true),L=STY.lock;
+  Object.assign(e,{gr:null,rage:0,tInv:0,thT:0,guard:100,bdCd:0,energy:25,brUsed:false,wb:false,gbPending:false,usedWB:false,usedGB:false,biteHeld:false,raveHeld:false,
+    x:clamp(F[0].x+380,L[0]+80,L[1]-80),y:GY,facing:-1,alt:!!d.alt,dm:d.dm,name:d.name});
+  if(e.x<F[0].x+150)e.x=clamp(F[0].x-380,L[0]+80,L[1]-80);
+  e.ai.skill=d.skill;e.alpha=1;e.gone=false;F[1]=e;snd('bell');
+}
+function storyKO(w){
+  if(w===F[0]){F[1].hp=0;STY.koT=1;snd('ko');voice(F[0],'v_win',.5);}
+  else if(!STY.dead){STY.dead=1;snd('ko');voice(F[0],'v_ko');}
+}
+function nextFoe(){
+  const S=STY,Fi=S.fight;if(!Fi){foeGone();return;}
+  Fi.n++;if(Fi.n<Fi.f.foes.length){spawnFoe(Fi.f.foes[Fi.n]);return;}
+  S.done[Fi.key]=1;S.fight=null;S.lock=null;const R=ROOMS[S.room];AL=R.al||50;AR=R.ar||R.w-50;foeGone();
+  S.cp={room:S.room,x:F[0].x,face:F[0].facing,hp:F[0].hp};
+  if(Fi.f.post)storyCap(Fi.f.post,Fi.f.then);else if(Fi.f.then)Fi.f.then();
+}
+function storyCap(lines,after){for(const s of lines)STY.cap.push({s,t:0});if(after)STY.after=after;}
+function useSpot(s){
+  const S=STY,k=S.room+s.id;
+  if(s.need&&!S.flags[s.need]){storyCap(s.locked);return;}
+  if(s.flag)S.flags[s.flag]=1;
+  if(s.heal){F[0].hp=Math.min(100,F[0].hp+s.heal);snd('bell');}
+  if(s.gone)S.used[k]=1;
+  const go=s.to?()=>{S.fade={t:0,len:56,mid:28,fn:()=>storyRoom(s.to,s.at,s.face)};snd('swing');}:s.end?()=>{S.end={t:0};}:null;
+  const seen=s.once&&S.used['L'+k];if(s.once)S.used['L'+k]=1;
+  if(s.lines&&!seen)storyCap(s.lines,go);else if(go)go();else if(s.lines)S.th={s:s.lines[s.lines.length-1],t:200};
+}
+// ---------- ход игры ----------
+function storyTick(){
+  const S=STY,R=ROOMS[S.room],pl=F[0],en=F[1];
+  const ok=IN[0].p1||IN[0].k2||IN[0].s||pressed.has('Enter')||pressed.has('Space')||PAD[0].start||PAD[0].fx;
+  if(S.title){if(--S.title.t<=0)S.title=null;else if(ok&&S.title.t<S.title.max-40)S.title.t=Math.min(S.title.t,24);return true;}
+  if(S.fade){const f=S.fade;f.t++;if(f.t===f.mid&&f.fn)f.fn();if(f.t>=f.len)S.fade=null;return true;}
+  if(S.end){S.end.t++;if(ok&&S.end.t>90){S.on=false;S.end=null;G.mode=1;G.phase='menu';}return true;}
+  if(S.cap.length){
+    const c=S.cap[0];c.t++;
+    if(ok){if(c.t*1.5<c.s.length)c.t=Math.ceil(c.s.length/1.5)+1;else{S.cap.shift();if(!S.cap.length&&S.after){const f=S.after;S.after=null;f();}}}
+    return true;
+  }
+  if(en.gone){en.x=pl.x+pl.facing*4000;en.y=GY;}
+  if(S.th&&--S.th.t<=0)S.th=null;
+  if(S.label&&--S.label.t<=0)S.label=null;
+  if(S.dead){
+    if(++S.dead===110)S.fade={t:0,len:80,mid:40,fn:()=>{const c=S.cp;pl.hp=pl.hpLag=Math.max(70,c.hp);S.dead=0;storyRoom(c.room,c.x,c.face);S.th={s:'Ещё раз. Ради неё.',t:220};}};
+    return false;
+  }
+  if(S.koT){if(++S.koT>70)en.alpha=Math.max(0,en.alpha-.035);if(en.alpha<=0){S.koT=0;nextFoe();}}
+  if(!S.fight&&R.fights)for(let i=0;i<R.fights.length;i++){
+    const f=R.fights[i],key=S.room+i;
+    if(!S.done[key]&&pl.x>=f.x){
+      S.fight={f,key,n:0};S.lock=f.lock;AL=f.lock[0]+40;AR=f.lock[1]-40;
+      const go=()=>spawnFoe(f.foes[0]);if(f.pre)storyCap(f.pre,go);else go();return true;
+    }
+  }
+  S.near=null;
+  if(!S.fight&&!S.koT&&pl.y>=GY&&FREE.includes(pl.state))for(const s of R.spots||[]){if(s.gone&&S.used[S.room+s.id])continue;if(pl.x>=s.x0&&pl.x<=s.x1){S.near=s;break;}}
+  if(S.near&&IN[0].s&&IN[0].g){IN[0].s=false;IN[0].g=false;pl.buf=newBuf();useSpot(S.near);return true;}
+  return false;
+}
+function storyCam(){
+  const S=STY,pl=F[0];let lo=0,hi=Math.max(0,WW-W);
+  if(S.lock){lo=S.lock[0];hi=Math.max(lo,S.lock[1]-W);}
+  const t=clamp(pl.x-W*.45+pl.facing*50,lo,hi);camX+=(t-camX)*.1;camX=clamp(camX,lo,hi);
+}
+// ---------- отрисовка ----------
+function spr(p,base){ // проп [имя, x, опции]; base — низ по умолчанию
+  const im=simg(p[0]);if(!imgOk(im))return;
+  const o=p[2]||{},s=o.s||(base.s||1),w=im.naturalWidth*s,h=im.naturalHeight*s;
+  const y=o.top!==undefined?o.top:(o.by!==undefined?o.by:base.by)-h;
+  ctx.drawImage(im,p[1],y,w,h);
+}
+const FLOORS={};
+function floorCanvas(R){ // пол рисуется один раз мелкими «пикселями» (×3) под стиль ассетов
+  if(FLOORS[R.name])return FLOORS[R.name];
+  const k=3,top=R.kind==='out'?R.bb:R.wb,c=document.createElement('canvas');c.width=Math.ceil(R.w/k);c.height=Math.ceil((H-top)/k);
+  const x=c.getContext('2d'),w=c.width,h=c.height;let seed=R.w;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  if(R.floor==='wood'){
+    for(let y=0;y<h;y++){const t=y/h,v=34+t*22|0;x.fillStyle=`rgb(${v+14},${v},${v-10})`;x.fillRect(0,y,w,1);}
+    for(let y=0;y<h;y+=4){x.fillStyle='rgba(0,0,0,.35)';x.fillRect(0,y,w,1);let px=(rnd()*30)|0;while(px<w){x.fillRect(px,y,1,4);px+=24+(rnd()*30|0);}}
+    for(let i=0;i<w*h/40;i++){x.fillStyle=`rgba(${rnd()<.5?0:90},${rnd()<.5?0:70},40,.18)`;x.fillRect(rnd()*w|0,rnd()*h|0,1,1);}
+  }else if(R.floor==='tile'){
+    for(let y=0;y<h;y+=5)for(let px=0;px<w;px+=5){const d=((px/5+y/5)&1)?44:38,t=y/h*16|0;x.fillStyle=`rgb(${d+t},${d+t+3},${d+t+2})`;x.fillRect(px,y,5,5);}
+    for(let i=0;i<w*h/30;i++){x.fillStyle='rgba(20,18,10,.25)';x.fillRect(rnd()*w|0,rnd()*h|0,1+(rnd()*2|0),1);}
+  }else{ // улица: тротуар, бордюр, асфальт с трещинами и лужами
+    const sw=Math.round(26/k),cb=Math.round(6/k);
+    for(let y=0;y<h;y++){const t=y/h;let col;
+      if(y<sw)col=[66,68,74];else if(y<sw+cb)col=y<sw+1?[96,98,104]:[40,41,46];else{const v=30+t*10|0;col=[v,v+2,v+6];}
+      x.fillStyle=`rgb(${col})`;x.fillRect(0,y,w,1);}
+    for(let px=0;px<w;px+=18){x.fillStyle='rgba(0,0,0,.35)';x.fillRect(px,0,1,sw);}
+    for(let i=0;i<w*h/22;i++){const yy=sw+cb+(rnd()*(h-sw-cb)|0);x.fillStyle=`rgba(${rnd()<.5?10:70},${rnd()<.5?12:72},${rnd()<.5?16:80},.35)`;x.fillRect(rnd()*w|0,yy,1,1);}
+    for(let i=0;i<w/40;i++){let cx=rnd()*w,cy=sw+cb+2+rnd()*(h-sw-cb-4);x.fillStyle='rgba(8,9,12,.6)';for(let j=0;j<10;j++){x.fillRect(cx|0,cy|0,1,1);cx+=1+rnd()*2;cy+=(rnd()-.5)*2;}}
+    for(let i=0;i<w/110;i++){const px=rnd()*w,py=sw+cb+4+rnd()*(h-sw-cb-8),pw=10+rnd()*22;x.fillStyle='rgba(20,30,48,.55)';x.beginPath();x.ellipse(px,py,pw,2+rnd()*2,0,0,7);x.fill();}
+  }
+  return FLOORS[R.name]=c;
+}
+function drawTrain(R){
+  const T=STY.train;if(!R.el)return;
+  if(T.x<-8e3){if(--T.wait<=0){T.x=R.el[0]-1700;T.wait=900+Math.random()*900;}return;}
+  T.x+=14;const y=R.el[2]+64;
+  ctx.save();ctx.beginPath();ctx.rect(R.el[0],0,R.el[1]-R.el[0],H);ctx.clip(); // поезд виден только на эстакаде
+  for(let c=0;c<4;c++){const x0=T.x+c*392;
+    ctx.fillStyle='#16191f';ctx.fillRect(x0,y-78,376,78);ctx.fillStyle='#262b33';ctx.fillRect(x0,y-78,376,6);
+    for(let k=0;k<7;k++){ctx.fillStyle=(k+c)%5===2?'rgba(120,110,90,.6)':'rgba(255,214,140,.85)';ctx.fillRect(x0+16+k*51,y-60,30,22);}}
+  ctx.restore();
+  if(T.x>R.el[1]+200)T.x=-9e3;
+}
+function storyBack(cx){
+  const R=ROOMS[STY.room];
+  if(R.arena){drawArena();return;}
+  ctx.imageSmoothingEnabled=false;
+  if(R.kind==='out'){
+    ctx.save();ctx.translate(cx,0);
+    const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#090c16');g.addColorStop(.55,'#18222e');g.addColorStop(1,'#0b0e14');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    if(imgOk(SKY)){ctx.imageSmoothingEnabled=true;const h=H*.95,w=h*SKY.naturalWidth/SKY.naturalHeight,off=-((cx*.15)%w);ctx.globalAlpha=.85;
+      for(let x=off-w;x<W+w;x+=w)ctx.drawImage(SKY,x,-20,w,h);ctx.globalAlpha=1;ctx.imageSmoothingEnabled=false;}
+    ctx.restore();
+    for(const p of R.bld||[])spr(p,{by:R.bb});
+    drawTrain(R);
+    for(const p of R.struct||[])spr(p,{by:R.bb});
+    const fc=floorCanvas(R);ctx.drawImage(fc,0,R.bb,fc.width*3,fc.height*3);
+  }else{
+    ctx.fillStyle='#0b0a0e';ctx.fillRect(0,0,WW,H);
+    let x=0;
+    for(const n of R.walls){
+      const im=simg(n);if(!imgOk(im)){x+=260;continue;}
+      const w=im.naturalWidth*SI,h=im.naturalHeight*SI,top=R.wb-h;
+      ctx.drawImage(im,0,0,im.naturalWidth,4,x,R.ceil,w,top-R.ceil+1); // стена вверх до потолка — продолжение верхней полоски
+      ctx.drawImage(im,x,top,w,h);x+=w;
+    }
+    const cg=ctx.createLinearGradient(0,0,0,R.ceil+90);cg.addColorStop(0,'rgba(5,5,8,1)');cg.addColorStop(.62,'rgba(5,5,8,.9)');cg.addColorStop(1,'rgba(5,5,8,0)');
+    ctx.fillStyle=cg;ctx.fillRect(0,0,WW,R.ceil+90);
+    for(const p of R.hang||[])spr([p[0],p[1],{top:p[2],s:SI}],{});
+    const fc=floorCanvas(R);ctx.drawImage(fc,0,R.wb,fc.width*3,fc.height*3);
+    ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,R.wb,WW,3);
+  }
+  for(const p of R.back||[])spr(p,{by:R.kind==='out'?R.bb+12:R.wb+8,s:R.kind==='out'?1:SI});
+  ctx.imageSmoothingEnabled=true;
+}
+function storyFront(cx){
+  const R=ROOMS[STY.room];
+  if(R.arena){const A=ARENAS[0],r=A.fgr;if(imgOk(A.fg))ctx.drawImage(A.fg,r[0]*WW/3584,r[1]*H/1184,r[2]*WW/3584,r[3]*H/1184);}
+  ctx.fillStyle=R.tint||'rgba(14,16,30,.4)';ctx.fillRect(cx-20,0,W+40,H);
+  ctx.save();ctx.globalCompositeOperation='lighter';
+  (R.lights||[]).forEach((l,i)=>{
+    if(l.x<cx-l.r||l.x>cx+W+l.r)return;
+    if(l.off>0)l.off--;else if(l.fl&&Math.random()<l.fl)l.off=3+Math.random()*10|0;
+    let v=.85+.08*Math.sin(frame*.07+i)+(l.neon?.07*Math.sin(frame*.31+i*2):0);
+    if(l.tv)v*=.6+.4*Math.abs(Math.sin(frame*.23+Math.sin(frame*.05)*3));
+    if(l.off>0)v*=l.off&2?.15:.5;
+    let g=ctx.createRadialGradient(l.x,l.y,0,l.x,l.y,l.r);
+    g.addColorStop(0,`rgba(${l.c},${l.a*v})`);g.addColorStop(.4,`rgba(${l.c},${l.a*v*.3})`);g.addColorStop(1,`rgba(${l.c},0)`);
+    ctx.fillStyle=g;ctx.fillRect(l.x-l.r,l.y-l.r,l.r*2,l.r*2);
+    if(l.cone){const gy=GY+6,cr=l.r*.9;g=ctx.createRadialGradient(l.x,gy,0,l.x,gy,cr);g.addColorStop(0,`rgba(${l.c},${l.a*v*.42})`);g.addColorStop(1,`rgba(${l.c},0)`);
+      ctx.fillStyle=g;ctx.save();ctx.translate(l.x,gy);ctx.scale(1,.22);ctx.translate(-l.x,-gy);ctx.fillRect(l.x-cr,gy-cr,cr*2,cr*2);ctx.restore();}
+    if(l.refl&&R.kind==='out'){const top=R.bb+34;g=ctx.createLinearGradient(0,top,0,H);g.addColorStop(0,`rgba(${l.c},${.16*v})`);g.addColorStop(1,`rgba(${l.c},0)`);
+      ctx.fillStyle=g;ctx.fillRect(l.x-14-Math.sin(frame*.05+i)*2,top,28,H-top);}
+  });
+  ctx.restore();
+  ctx.imageSmoothingEnabled=false;ctx.filter='brightness(.32) saturate(.6)';
+  for(const p of R.front||[]){const o=p[2]||{},pf=o.pf||1.3;spr([p[0],p[1]-cx*(pf-1),o],{by:H+40,s:R.kind==='out'?1.15:SI*1.15});}
+  ctx.filter='none';ctx.imageSmoothingEnabled=true;
+}
+function storyScreenFx(){
+  const R=ROOMS[STY.room];
+  if(R.snow){ // снег — как в старом Нью-Йорке у Макса
+    const S=STY.snow;while(S.length<150)S.push({x:Math.random()*W,y:Math.random()*H,v:.6+Math.random()*1.4,s:Math.random()<.2?3:2,p:Math.random()*6});
+    ctx.fillStyle='rgba(225,232,245,.75)';
+    for(const f of S){f.y+=f.v;f.x+=Math.sin(frame*.02+f.p)*.5-.25;if(f.y>H){f.y=-4;f.x=Math.random()*W;}ctx.fillRect(f.x,f.y,f.s,f.s);}
+  }
+  const g=ctx.createRadialGradient(W/2,H*.55,H*.35,W/2,H*.55,H*.95);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.7)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+}
+function wrapTxt(s,maxW){const out=[];let line='';for(const w of s.split(' ')){const t=line?line+' '+w:w;if(ctx.measureText(t).width>maxW&&line){out.push(line);line=w;}else line=t;}if(line)out.push(line);return out;}
+function storyHud(){
+  const S=STY,pl=F[0],en=F[1];
+  // здоровье
+  const bar=(x,w,f,name,right)=>{
+    ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(x-3,24,w+6,22);
+    const a=clamp(f.hpLag,0,100)/100*w,b=clamp(f.hp,0,100)/100*w;
+    ctx.fillStyle='#e8e0d0';ctx.fillRect(right?x+w-a:x,27,a,16);
+    ctx.fillStyle=f.hp<30?'#c8281e':'#b8a46a';ctx.fillRect(right?x+w-b:x,27,b,16);
+    txt(name,right?x+w:x,70,18,'#efe6c8',right?'right':'left');
+  };
+  bar(30,300,pl,'КОНЬ',false);
+  if(!en.gone)bar(W-330,300,en,en.name||'',true);
+  if(pl.combo>=2&&!en.gone)txt(`${pl.combo} УДАРОВ`,30,108,26,'#e8c060','left');
+  if(S.label){ctx.globalAlpha=Math.min(1,S.label.t/30);txt(S.label.s,W/2,44,20,'#efe6c8','center');ctx.globalAlpha=1;}
+  if(S.near&&!S.cap.length&&!S.fade){
+    const x=pl.x-camX,y=pl.y-232,t=`${ctlLabel('g')} — ${S.near.label}`;ctx.font='bold 14px Arial';const w=ctx.measureText(t).width+20;
+    ctx.fillStyle='rgba(10,10,14,.75)';ctx.fillRect(x-w/2,y-18,w,26);ctx.strokeStyle='rgba(239,230,200,.7)';ctx.strokeRect(x-w/2,y-18,w,26);
+    txt(t,x,y,14,'#efe6c8','center',true);
+  }
+  if(S.th){ctx.globalAlpha=Math.min(1,S.th.t/30);ctx.font='italic 17px Georgia,serif';const l=wrapTxt(S.th.s,620);
+    l.forEach((s,i)=>txt(s,W/2,H-60+i*22-(l.length-1)*11,17,'#efe6c8','center',true));ctx.globalAlpha=1;}
+  if(S.cap.length){ // панель графической новеллы: бумага, печатный текст
+    const c=S.cap[0],n=Math.min(c.s.length,Math.floor(c.t*1.5)),dlg=c.s[0]==='—';
+    ctx.font='bold 18px Georgia,"Times New Roman",serif';const lines=wrapTxt(c.s,520),bx=34,by=96,bw=560,bh=lines.length*26+30;
+    ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(bx+6,by+6,bw,bh);
+    ctx.fillStyle=dlg?'#f4f1e8':'#e9dfbd';ctx.fillRect(bx,by,bw,bh);ctx.strokeStyle='#14110c';ctx.lineWidth=3;ctx.strokeRect(bx,by,bw,bh);
+    let left=n;ctx.fillStyle='#1a1610';ctx.textAlign='left';
+    lines.forEach((s,i)=>{const t=s.slice(0,Math.max(0,left));left-=s.length+1;ctx.fillText(t,bx+20,by+30+i*26);});
+    if(n>=c.s.length&&frame%40<26){ctx.fillStyle='#7a1a14';ctx.fillText('▸',bx+bw-26,by+bh-10);}
+  }
+  if(S.dead>20){ctx.fillStyle=`rgba(60,0,0,${Math.min(.55,(S.dead-20)/120)})`;ctx.fillRect(0,0,W,H);
+    if(S.dead>40)txt('ТЬМА. ПОТОМ — СНОВА ЕЁ ГОЛОС.',W/2,H/2,30,'#efe6c8');}
+  if(S.title){const t=S.title,a=Math.min(1,t.t/40);ctx.fillStyle=`rgba(0,0,0,${Math.min(1,t.t/30)})`;ctx.fillRect(0,0,W,H);
+    ctx.globalAlpha=a;txt('ZOO NIGHT',W/2,200,22,'#8a7a5a');txt(t.a,W/2,262,54,'#efe6c8');txt(t.b,W/2,318,30,'#b52a1e');
+    txt('нажми любую кнопку удара',W/2,H-40,13,'#6a6a6a','center',true);ctx.globalAlpha=1;}
+  if(S.fade){const f=S.fade,k=f.t<f.mid?f.t/f.mid:1-(f.t-f.mid)/(f.len-f.mid);ctx.fillStyle=`rgba(0,0,0,${clamp(k*1.1,0,1)})`;ctx.fillRect(0,0,W,H);}
+  if(S.end){const a=Math.min(1,S.end.t/60);ctx.fillStyle=`rgba(0,0,0,${a})`;ctx.fillRect(0,0,W,H);ctx.globalAlpha=a;
+    txt('КОНЕЦ ГЛАВЫ ПЕРВОЙ',W/2,240,48,'#efe6c8');txt('Продолжение следует…',W/2,292,24,'#b52a1e');
+    if(S.end.t>90)txt('нажми любую кнопку удара — в меню',W/2,H-40,13,'#6a6a6a','center',true);ctx.globalAlpha=1;}
+}
+
 // ---------- главное меню ----------
 // фон 1920×1080 рисуется на весь экран (k=0.5); поверх — живые детали: мерцание фонарей, пар из люка, огонь в бочке,
 // капли крови с логотипа, дождь и крыса, которая иногда перебегает улицу. Кнопки — готовые картинки (обычная / наведена / нажата).
 const MENU_BG=imgOf('assets/menu_bg.jpg'),RAT=sheet('assets/menu_rat.png',8,374,167,18,{});
-const MENU_BTN=[['player_vs_ai',1],['player_vs_player',2],['online',4],['tutorial',6],['training',3],['controls',5]].map(([id,act])=>
-  ({id,act,img:id==='tutorial'?{}:{n:imgOf(`assets/ui/${id}_normal.png`),h:imgOf(`assets/ui/${id}_hover.png`),a:imgOf(`assets/ui/${id}_active.png`)}}));
-const MB={x:30,y:140,w:370,h:50,step:58}; // кнопки на экране
-// кнопка «Обучение» рисуется из кнопки «Тренировка»: надпись закрывается полосатым фоном, иконка — знак вопроса
+const MENU_BTN=[['story',7],['player_vs_ai',1],['player_vs_player',2],['online',4],['tutorial',6],['training',3],['controls',5]].map(([id,act])=>
+  ({id,act,img:id==='tutorial'||id==='story'?{}:{n:imgOf(`assets/ui/${id}_normal.png`),h:imgOf(`assets/ui/${id}_hover.png`),a:imgOf(`assets/ui/${id}_active.png`)}}));
+const MB={x:30,y:122,w:370,h:46,step:52}; // кнопки на экране
+// кнопки «Прохождение» и «Обучение» рисуются из кнопки «Тренировка»: надпись закрывается полосатым фоном, своя иконка
+const GEN_BTN={tutorial:['?','Обучение'],story:['★','Прохождение']};
 function menuTutorImgs(){
-  const b=MENU_BTN.find(b=>b.id==='tutorial'),src=MENU_BTN.find(b=>b.id==='training').img;
-  if(b.img.n||!['n','h','a'].every(k=>imgOk(src[k])))return;
+  const src=MENU_BTN.find(b=>b.id==='training').img;
+  if(!['n','h','a'].every(k=>imgOk(src[k])))return;
+  for(const b of MENU_BTN){
+  if(!GEN_BTN[b.id]||b.img.n)continue;
+  const[icon,label]=GEN_BTN[b.id];
   for(const k of['n','h','a']){
     const s=src[k],c=document.createElement('canvas');c.width=s.naturalWidth;c.height=s.naturalHeight;
     const x=c.getContext('2d'),h=c.height;x.drawImage(s,0,0);
@@ -2677,10 +3024,11 @@ function menuTutorImgs(){
     const px=x.getImageData(34,40,1,1).data;x.fillStyle=`rgb(${px[0]},${px[1]},${px[2]})`;x.fillRect(32,26,118,h-52); // пустая иконка
     const col=k==='a'?'#f0dcc4':'#d6cbb5';
     x.font='bold 64px "Times New Roman",Georgia,serif';x.textBaseline='middle';
-    x.fillStyle='rgba(0,0,0,.75)';x.fillText('?',76,h/2+5);x.fillText('Обучение',196,h/2+5);
-    x.fillStyle=col;x.fillText('?',73,h/2+2);x.fillText('Обучение',193,h/2+2);
+    const ix=icon==='?'?73:64;
+    x.fillStyle='rgba(0,0,0,.75)';x.fillText(icon,ix+3,h/2+5);x.fillText(label,196,h/2+5);
+    x.fillStyle=col;x.fillText(icon,ix,h/2+2);x.fillText(label,193,h/2+2);
     b.img[k]=c;
-  }
+  }}
 }
 const MFX={steam:[],fire:[],drips:[],rain:[],rat:{x:0,dir:1,on:false,wait:120}};
 const MLAMP=[{x:690,y:214,r:170,c:'255,205,130',a:.22,b:.006},{x:597,y:498,r:80,c:'255,195,120',a:.2,b:.01},{x:547,y:290,r:70,c:'255,40,50',a:.25,b:.03}];
@@ -2753,7 +3101,7 @@ function drawMenu(){
     if(im&&(im instanceof HTMLCanvasElement||imgOk(im)))ctx.drawImage(im,x,y,MB.w,MB.h);else{ctx.fillStyle='#222';ctx.fillRect(x,y,MB.w,MB.h);}
   });
   const pi=padInfo()[0];
-  txt('↑ ↓ — выбор · ✕ / Enter — выбрать · 1–6 — сразу · мышь тоже работает',MB.x+4,MB.y+MENU_BTN.length*MB.step+14,13,'#ccc','left',true);
+  txt('↑ ↓ — выбор · ✕ / Enter — выбрать · 1–7 — сразу · мышь тоже работает',MB.x+4,MB.y+MENU_BTN.length*MB.step+14,13,'#ccc','left',true);
   txt('Геймпад: '+pi,MB.x+4,MB.y+MENU_BTN.length*MB.step+32,12,/игрок/.test(pi)?'#7dff8a':'#999','left',true);
 }
 // мышь в меню: наведение подсвечивает кнопку, клик — выбирает
@@ -2865,17 +3213,17 @@ function render(){
   if(shake>.5){ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);shake*=.85;}
   const menu=G.phase==='menu'||G.phase==='select'||G.phase==='stage'||G.phase==='net'||G.phase==='keys',cx=Math.round(menu?(WW-W)/2+Math.sin(frame*.004)*(WW-W)/2:camX);
   ctx.save();ctx.translate(-cx,0);
-  drawArena();
+  if(G.mode===7&&!menu)storyBack(cx);else drawArena();
   if(menu){ctx.restore();if(G.phase==='menu')drawMenu();else if(G.phase==='net')drawNet();else if(G.phase==='keys')drawKeys();else if(G.phase==='stage')drawStage();else drawSelect();ctx.restore();return;}
   for(const p of parts)if(p.st){ctx.globalAlpha=clamp(p.life/70,0,.85);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.size*1.3,p.y-p.size*.3,p.size*2.6,p.size*.6);}
   ctx.globalAlpha=1;
   for(const f of F){
-    if(drawShadow(f.i))continue;
+    if(f.gone||drawShadow(f.i))continue;
     ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();
     ctx.ellipse(f.x,GY+3,Math.max(14,40-(GY-f.y)*.12),7,0,0,7);ctx.fill();
   }
   const order=F[0].state==='attack'?[F[1],F[0]]:[F[0],F[1]];
-  for(const f of order)drawF(f);
+  for(const f of order)if(!f.gone)drawF(f);
   SPFX=SPFX.filter(e=>frame-e.t0<16&&imgOk(e.spr.img));
   for(const e of SPFX){ // брызги плевка
     const s=e.spr,fr=frame-e.t0<8?4:7,sc=.62;
@@ -2898,8 +3246,10 @@ function render(){
     else{ctx.globalAlpha=clamp(p.life/14,0,1);ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);}
   }
   ctx.globalAlpha=1;
-  {const A=arena(),r=A.fgr;if(imgOk(A.fg))ctx.drawImage(A.fg,r[0]*WW/3584,r[1]*H/1184,r[2]*WW/3584,r[3]*H/1184);} // передний план перекрывает бойцов
+  if(G.mode===7)storyFront(cx); // прохождение: свет, тени, передний план
+  else{const A=arena(),r=A.fgr;if(imgOk(A.fg))ctx.drawImage(A.fg,r[0]*WW/3584,r[1]*H/1184,r[2]*WW/3584,r[3]*H/1184);} // передний план перекрывает бойцов
   ctx.restore();
+  if(G.mode===7)storyScreenFx();
   hud();
   if(NET.on)drawNetHud();
   for(const f of F)if(f.state==='grab'&&f.gr&&f.gr.phase==='qte')drawQTE(f);
