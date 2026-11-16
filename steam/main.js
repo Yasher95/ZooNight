@@ -77,8 +77,22 @@ app.whenReady().then(() => {
   const i = process.argv.indexOf('+connect_lobby');
   if (i >= 0 && process.argv[i + 1]) win.webContents.once('did-finish-load', () => setTimeout(() => send('steam:invited', process.argv[i + 1]), 1500));
   if (process.env.ZN_SELFTEST) selfTest(process.env.ZN_SELFTEST); // проверка сборки без окна
+  if (process.env.ZN_SHOTS) shots(process.env.ZN_SHOTS); // кадры игры без окна: файл JSON {out, scenes:[код страницы]}
 });
 
+function shots(cfgFile) {
+  const fs = require('fs'), cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8').replace(/^﻿/, ''));
+  win.setContentSize(960, 540); win.setPosition(-3000, -3000); win.showInactive(); // за краем экрана — без окна перед глазами
+  win.webContents.once('did-finish-load', () => setTimeout(async () => {
+    fs.mkdirSync(cfg.out, { recursive: true });
+    for (let i = 0; i < cfg.scenes.length; i++) {
+      try { await win.webContents.executeJavaScript(`(0,eval)(${JSON.stringify(cfg.scenes[i])});1`); } catch (e) { fs.appendFileSync(cfg.out + '/err.txt', i + ' ' + e.message + '\n'); }
+      await new Promise(r => setTimeout(r, cfg.wait || 1400));
+      fs.writeFileSync(`${cfg.out}/shot${i + 1}.png`, (await win.webContents.capturePage()).toPNG());
+    }
+    app.quit();
+  }, 2500));
+}
 function selfTest(outFile) {
   win.hide();
   win.webContents.once('did-finish-load', () => setTimeout(async () => {
