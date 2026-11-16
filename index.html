@@ -2700,9 +2700,9 @@ const FOES={
   thug:{ch:6,alt:1,name:'ГРОМИЛА',skill:.4,dm:1.1},
   boss:{ch:6,alt:0,name:'РЖАВЫЙ',skill:.52,dm:.95},
   guard:{ch:6,alt:1,name:'ОХРАННИК ДОКА',skill:.46,dm:1},
-  // глава 2 (пока — перекрашенные питбуль и лама; свои спрайты — по списку в docs/ГЛАВА_2.md)
+  // глава 2 (пока все бандиты — питбули; свои спрайты — по списку в docs/ГЛАВА_2.md)
   rat:{ch:6,alt:1,name:'ТУННЕЛЬНАЯ КРЫСА',skill:.32,dm:1.35},
-  junkie:{ch:5,alt:1,name:'ТОРЧОК',skill:.3,dm:1.5},
+  junkie:{ch:6,alt:1,name:'ТОРЧОК',skill:.3,dm:1.5},
   knifer:{ch:6,alt:0,name:'НОЖОВЩИК',skill:.5,dm:1.05},
   orderly:{ch:6,alt:1,name:'САНИТАР',skill:.42,dm:.95},
   boss2:{ch:6,alt:0,name:'МЯСНИК',skill:.62,dm:.8}
@@ -3120,11 +3120,25 @@ function storyFront(cx){
   if(R.train)drawMetroTrain(R);
 }
 // поезд метро проносится по путям перед платформой: звук проезда (assets/audio/metro_train.mp3), тряска
-const TRAIN_SND=new Audio('assets/audio/metro_train.mp3');TRAIN_SND.volume=.7;
+// звук проезда: сам сэмпл + эхо туннеля (задержка с затухающей обратной связью и срезанными верхами) —
+// хвост тянется ~3 с, будто поезд уходит вдаль, а не обрывается
+let TRAIN_BUF=null;
+function playTrain(){
+  if(!ac)return;
+  if(!TRAIN_BUF){fetch('assets/audio/metro_train.mp3').then(r=>r.arrayBuffer()).then(b=>ac.decodeAudioData(b)).then(b=>{TRAIN_BUF=b;playTrain();}).catch(()=>{});return;}
+  const t=ac.currentTime,src=ac.createBufferSource(),dry=ac.createGain(),dl=ac.createDelay(1),fb=ac.createGain(),lp=ac.createBiquadFilter(),wet=ac.createGain();
+  src.buffer=TRAIN_BUF;src.playbackRate.value=.92;
+  dry.gain.setValueAtTime(.75,t);dry.gain.setTargetAtTime(0,t+TRAIN_BUF.duration*.75,.18);
+  dl.delayTime.value=.23;fb.gain.value=.62;lp.type='lowpass';lp.frequency.value=1400;
+  wet.gain.setValueAtTime(.55,t);wet.gain.setTargetAtTime(0,t+TRAIN_BUF.duration,1.1); // эхо затихает вдали
+  src.connect(dry);dry.connect(ac.destination);
+  src.connect(dl);dl.connect(lp);lp.connect(fb);fb.connect(dl);lp.connect(wet);wet.connect(ac.destination);
+  src.start(t);setTimeout(()=>{try{fb.disconnect();wet.disconnect();}catch(e){}},9000);
+}
 function drawMetroTrain(R){
   const T=STY.mtrain,im=simg('metro_train');if(!imgOk(im))return;
   const w=im.naturalWidth*.5/RZ(),h=im.naturalHeight*.5/RZ(); // y — верх поезда по референсу (R.train)
-  if(T.x<-8e3){if(--T.wait<=0){T.x=-w-200;T.wait=1100+Math.random()*900;if(!musicOff){TRAIN_SND.currentTime=0;TRAIN_SND.play().catch(()=>{});}}return;}
+  if(T.x<-8e3){if(--T.wait<=0){T.x=-w-200;T.wait=1100+Math.random()*900;if(!musicOff)playTrain();}return;}
   T.x+=30;shake=Math.max(shake,3);
   ctx.drawImage(im,T.x,R.train,w,h);
   if(T.x>R.w+200)T.x=-9e3;
