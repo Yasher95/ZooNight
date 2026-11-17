@@ -62,8 +62,30 @@ for src_n, name in (('нож1.png', 'kn_knife1'), ('нож2.png', 'kn_knife2'), 
     g = (k[..., 1] > k[..., 0] + .08) & (k[..., 1] > k[..., 2] + .08); k[g, 3] = 0
     save(scl(k, S), name + '.png'); print('KNIFE', name, round(k.shape[1] * S), round(k.shape[0] * S))
 # увороты: якорь — середина нижнего ряда джинсов, верх головы
-for i in range(1, 7):
-    d = load(f'уворот{i}.png'); hh, ww = d.shape[:2]; al = d[..., 3] > .5
+for i in range(0, 7):  # 0 — ровная стойка спиной (перед каждым уворотом)
+    d = load(f'уворот{i}.png' if i else 'позиция перед уворотом.png'); hh, ww = d.shape[:2]; al = d[..., 3] > .5
     row = np.nonzero(al[hh - 3])[0]; cols = np.nonzero(al.any(0))[0]; rows = np.nonzero(al.any(1))[0]
     save(scl(d), f'kn_horse{i}.png')
     print('DODGE', i, 'size', round(ww * S), round(hh * S), 'bottom', round(row.min() * S), round(row.max() * S), 'x', round(cols.min() * S), round(cols.max() * S), 'top', round(rows.min() * S))
+# разметка ходьбы (зелёная полоса) и масштаб персонажа после мини-игры
+mk = load('рамзетка и размер перса.png')
+gr = (mk[..., 1] > .6) & (mk[..., 0] < .4) & (mk[..., 2] < .4)
+ys, xs = np.nonzero(gr); print('GREEN y', round(ys.min() * S), round(ys.max() * S), 'mid', round((ys.min() + ys.max()) / 2 * S), 'x', round(xs.min() * S), round(xs.max() * S))
+hm = (np.abs(mk[..., :3] - bg[..., :3]).max(-1) > .15) & ~gr
+cnt = hm.sum(1); rows = np.nonzero(cnt > 4)[0]; cc = hm.sum(0); cols = np.nonzero(cc > 4)[0]
+print('HORSE y', round(rows.min() * S), round(rows.max() * S), 'h', round((rows.max() - rows.min()) * S), 'x', round(cols.min() * S), round(cols.max() * S))
+# передние планы кресел: точное место на фоне
+for fn, name in (('передний план кресел1.png', 'wg_fg_seat1'), ('передний план кресел2.png', 'wg_fg_seat2')):
+    f = load(fn); fh, fw = f.shape[:2]; m = f[..., 3] > .95; yy, xx = np.nonzero(m)
+    sel = np.random.RandomState(1).choice(len(yy), min(3000, len(yy)), replace=False); yy, xx = yy[sel], xx[sel]; v = f[yy, xx, :3]
+    best = (9, 0, 0)
+    for oy in range(0, bg.shape[0] - fh + 1, 4):
+        for ox in range(0, bg.shape[1] - fw + 1, 4):
+            e = np.abs(bg[oy + yy, ox + xx, :3] - v).mean()
+            if e < best[0]: best = (e, ox, oy)
+    e0, x0, y0 = best
+    for oy in range(max(0, y0 - 4), min(bg.shape[0] - fh, y0 + 4) + 1):
+        for ox in range(max(0, x0 - 4), min(bg.shape[1] - fw, x0 + 4) + 1):
+            e = np.abs(bg[oy + yy, ox + xx, :3] - v).mean()
+            if e < best[0]: best = (e, ox, oy)
+    save(scl(f), name + '.png'); print('SEAT', name, 'at', round(best[1] * S, 1), round(best[2] * S, 1), 'err %.4f' % best[0], 'size', round(fw * S), round(fh * S))
