@@ -3377,10 +3377,11 @@ function mgStart(type,then){
   STY.mg=type==='knife'?{type,t:0,wait:30,knives:[],thrown:0,total:18,next:50,hits:0,sway:0,swayT:0,flash:0,then}
     :{type,t:0,wait:30,dur:60*60,lane:1,lx:1,jump:0,duck:0,obs:[],next:90,inv:0,hits:0,flash:0,ring:0,then};
   STY.mg.spd=D===SDIFF[0]?.8:D===SDIFF[2]?1.2:1;
+  if(type==='knife'){STY.mg.lim=D===SDIFF[0]?3:D===SDIFF[2]?1:2;STY.mg.lock=0;} // ножи: сколько попаданий — проигрыш (лёгкий 3, средний 2, трудный 1)
   snd('bell');
 }
 function mgFail(){
-  const M=STY.mg,S=STY;F[0].hp=F[0].hpLag=Math.max(S.D.hp,60);
+  const M=STY.mg,S=STY;if(M.type!=='knife')F[0].hp=F[0].hpLag=Math.max(S.D.hp,60);
   storyCap([M.type==='knife'?'Лезвие вошло под рёбра. Тьма. Потом — снова её голос. Ещё раз.':'Меня швырнуло о стенку трубы. Тьма. Потом — снова её голос. Ещё раз.'],()=>mgStart(M.type,M.then));
   S.mg=null;
 }
@@ -3389,13 +3390,16 @@ function mgTick(){
   const M=STY.mg;M.t++;if(M.flash>0)M.flash--;
   if(M.wait>0){M.wait--;return;}
   if(M.type==='knife')knifeTick(M);else pipeTick(M);
-  if(STY.mg===M&&F[0].hp<=0)mgFail();
+  if(STY.mg===M&&(M.type==='knife'?M.hits>=M.lim&&!M.flash:F[0].hp<=0))mgFail(); // ножи: проигрыш после вспышки последнего попадания
 }
+function knifeHit(M){M.hits++;M.flash=14;shake=Math.max(shake,12);snd('hit');voice(F[0],'v_hurt');}
 function mgHurt(M,dmg){F[0].hp=Math.max(0,F[0].hp-dmg*STY.D.pdm);M.flash=14;shake=Math.max(shake,10);snd('hit');voice(F[0],'v_hurt');M.hits++;}
 
 // ---------- 2. ножи: бандит бросает ножи, Конь уворачивается ----------
 // Вид из-за спины Коня. Нож летит в одну из трёх точек (левое плечо, голова, правое плечо); рядом с ним — кнопка.
 // Нажал её, пока нож в полёте (после первой трети пути), — Конь уходит от ножа; не та кнопка или поздно — попадание.
+// Попаданий до проигрыша: лёгкий 3, средний 2, трудный 1 (здоровье не тратится). Нажал раньше времени — Конь
+// сбился и ~0.4 с не реагирует на кнопки (против долбёжки).
 // Ножей 18, с каждым броском быстрее; ближе к концу — по два сразу.
 // Арт: фон loc_c2_wagon.jpg (тот же, что у комнаты), метатель mg_knifer (2 кадра: замах/бросок) за столом kn_table,
 // Конь со спины kn_horse1..6 (4 — стойка; 1–3 — уход вправо, 5–6 — влево), ножи kn_knife1..3. Всё нарезано
@@ -3414,19 +3418,21 @@ function knifeTick(M){
     M.next=Math.round((k>11&&Math.random()<.45?14:Math.max(34,70-k*2.2))/M.spd);
   }
   if(M.throwT>0)M.throwT--;
-  const press=BTN.find(b=>n[b]);
+  if(M.lock>0)M.lock--;
+  if(M.hits>=M.lim)return; // последнее попадание — дальше только проигрыш
+  const press=M.lock>0?null:BTN.find(b=>n[b]);
   for(const kn of M.knives){
     if(kn.done)continue;kn.p+=1/kn.fly;
     if(press&&kn.p>.33&&!M.used){
       M.used=1;
       if(press===kn.b){kn.done=1;kn.dodged=1;M.sway=kn.lane===0?40:kn.lane===2?-30:0;M.swayT=22;
         M.dodge=kn.lane===1?(Math.random()<.5?[2,2]:[5,5]):KN_DODGE[kn.lane];snd('block');}
-      else{kn.done=1;mgHurt(M,9);}
+      else{kn.done=1;knifeHit(M);}
     }
-    if(!kn.done&&kn.p>=1){kn.done=1;mgHurt(M,16);}
+    if(!kn.done&&kn.p>=1){kn.done=1;knifeHit(M);}
   }
   M.used=0;
-  if(press&&!M.knives.some(k=>!k.done&&k.p>.33)&&M.knives.some(k=>!k.done))mgHurt(M,4); // нажал раньше времени
+  if(press&&!M.knives.some(k=>!k.done&&k.p>.33)&&M.knives.some(k=>!k.done)){M.lock=24;snd('ui_sel');} // нажал раньше времени — сбился
   M.knives=M.knives.filter(k=>!k.done||k.p<1.25);for(const k of M.knives)if(k.done)k.p+=.04;
   if(M.thrown>=M.total&&!M.knives.some(k=>!k.done)){
     if(!M.endT)M.endT=1;else if(++M.endT>50)mgWin();
@@ -3528,7 +3534,14 @@ function drawPipe(){
   ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(W/2-150,44,300,8);ctx.fillStyle='#b52a1e';ctx.fillRect(W/2-150,44,300*Math.min(1,M.t/M.dur),8);
   txt(`← → — полоса · ${ctlLabel('u')} — прыжок через обломки · ${ctlLabel('d')} — пригнуться под кабелями · осталось ${Math.ceil(left/60)} с`,W/2,H-14,13,'#bbb','center',true);
 }
-function drawMg(){if(STY.mg.type==='knife')drawKnife();else drawPipe();
+function drawMg(){const M=STY.mg;if(M.type==='knife')drawKnife();else drawPipe();
+  if(M.type==='knife'){ // ножи: вместо здоровья — сколько попаданий ещё можно пропустить
+    txt('ПОПАДАНИЯ',30,38,16,'#efe6c8','left');
+    for(let i=0;i<M.lim;i++){const x=150+i*30,hit=i<M.hits;ctx.fillStyle=hit?'#c8281e':'rgba(0,0,0,.6)';ctx.beginPath();ctx.arc(x,32,10,0,7);ctx.fill();
+      ctx.strokeStyle=hit?'#ffb0a0':'#efe6c8';ctx.lineWidth=2;ctx.stroke();if(hit){ctx.strokeStyle='#fff';ctx.beginPath();ctx.moveTo(x-5,27);ctx.lineTo(x+5,37);ctx.moveTo(x+5,27);ctx.lineTo(x-5,37);ctx.stroke();}}
+    if(M.lock>0)txt('СБИЛСЯ — рано нажал',W/2,H-44,20,'#ff8a6a');
+    if(M.wait>0&&!STY.cap.length)txt('ГОТОВЬСЯ…',W/2,H/2,48,'#efe6c8');
+    return;}
   // здоровье Коня поверх мини-игры
   const pl=F[0],w=300,x=30;ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(x-3,24,w+6,22);ctx.fillStyle='#e8e0d0';ctx.fillRect(x,27,clamp(pl.hpLag,0,100)/100*w,16);
   ctx.fillStyle=pl.hp<30?'#c8281e':'#b8a46a';ctx.fillRect(x,27,clamp(pl.hp,0,100)/100*w,16);pl.hpLag+=(pl.hp-pl.hpLag)*.06;
