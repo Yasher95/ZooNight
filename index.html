@@ -276,8 +276,9 @@ function musicSync(){
   // прохождение — у каждой локации свой трек
   const SM={apt:MUSIC_HOME,hall:MUSIC_HOME,street:MUSIC_STREET,bar:MUSIC,search:MUSIC,metro:MUSIC_METRO};
   const on=G.phase==='select'||G.phase==='stage'?MUSIC_SEL:G.phase==='menu'||G.phase==='net'||G.phase==='keys'||G.phase==='storydiff'||G.mode===4?MUSIC_MENU:
-    G.mode===7?(SM[STY.room]||(STY.room&&STY.room.startsWith('c2')?MUSIC_METRO:MUSIC_HOME)):G.mode===3?MUSIC_DOJO:fm;
+    G.mode===7?null:G.mode===3?MUSIC_DOJO:fm; // прохождение — без музыки (будет эмбиент)
   for(const m of[MUSIC,MUSIC_SEL,MUSIC_MENU,MUSIC_HOSP,MUSIC_HOME,MUSIC_METRO,MUSIC_STREET,MUSIC_DOJO])if(m!==on&&!m.paused)m.pause();
+  if(!on)return;
   if(musicOff||!VID.done){if(!on.paused)on.pause();} // во время победного ролика музыка молчит
   else if(on.paused){if(on===MUSIC_SEL||on===MUSIC_MENU)on.currentTime=on.start||0;on.play().catch(()=>{});}
 }
@@ -2842,16 +2843,21 @@ const ROOMS={
     spots:[{id:'door',x0:246,x1:330,label:'дверь в коллектор',to:'c2_sewer',at:150,face:1,need:'knifer',locked:['Дверь в коллектор. Сначала — Ножовщик.'],
       lines:['За дверью — лестница вниз, в коллектор. Снизу тянуло холодом и гнилью.']},
       {id:'table',x0:470,x1:640,label:'стол с ножами',once:1,lines:['Стол, утыканный ножами, как подушечка для иголок. Под ним — ящик. На карте кто-то обвёл красным старую станцию.']}]},
-  c2_sewer:{name:'КОЛЛЕКТОР',kind:'stub',bg:'loc_c2_sewer.jpg',col:['#040706','#0f1a14'],w:2600,gy:470,al:60,ar:2540,z:.8,tint:'rgba(0,10,4,.3)',
-    deco:[[400,'сточный канал'],[1200,'мостки над шахтой'],[2380,'сливная труба вниз']],
-    lights:[{x:1200,y:200,r:220,c:'140,255,170',a:.16,fl:.04},{x:2380,y:300,r:140,c:'255,220,140',a:.2}],
-    enter:['Коллектор. Здесь город переваривал всё, что съел. Вода текла чёрная и густая, как кофе в участке.'],
-    fights:[{x:700,lock:[400,1360],foes:['rat','junkie'],pre:['На мостках меня ждали. Ножовщик соврал, что я пройду тихо. Или сказал правду — им.']},
-      {x:1700,lock:[1340,2300],foes:['orderly'],pre:['Санитар в резиновом фартуке. Первый человек Дока, которого я увидел. Он улыбался.']}],
+  // коллектор: локация со свободной ходьбой (free) — по зелёной маске разметки в любую сторону, рост Коня — по опорным
+  // фигурам автора (FREEW ниже). Координаты точек — экранные px, y0..y1 — где должны стоять ступни. Боёв здесь нет.
+  c2_sewer:{name:'КОЛЛЕКТОР',kind:'img',bg:'loc_c2_sewer.jpg',w:996.3,gy:300,al:0,ar:996,z:1,start:[204,234],tint:'rgba(0,6,2,.12)',
+    fgs:[['sw_fg_rail',292.7,144.5]],
+    lights:[{x:285,y:88,r:120,c:'255,50,50',a:.2,fl:.04},{x:438,y:92,r:110,c:'230,220,90',a:.14,fl:.05},{x:598,y:106,r:110,c:'150,230,120',a:.14,fl:.03}],
+    enter:['Коллектор. Здесь город переваривал всё, что съел. Вода текла чёрная и густая, как кофе в участке.','Мостки уходили в темноту. Внизу, у воды, — решётчатые ворота.'],
     spots:[
-      {id:'shaft',x0:1150,x1:1270,label:'шахта',once:1,lines:['Внизу шахты — темнота такая плотная, что её можно резать. Где-то там капает. Медленно, как часы.']},
-      {id:'pipe',x0:2320,x1:2480,label:'спуститься по трубе',mg:'pipe',to:'c2_old',at:160,face:1,
-        lines:['Сливная труба уходила вниз под углом, как горло. Двести метров ржавчины и темноты.','Я сел на край и оттолкнулся.']}]},
+      {id:'wagon',x0:100,x1:190,y0:205,y1:255,label:'в вагон',to:'c2_wagon',at:290,face:1},
+      {id:'ldown',x0:262,x1:318,y0:176,y1:206,label:'лестница вниз',tp:[356,330]},
+      {id:'lup',x0:338,x1:366,y0:316,y1:346,label:'лестница наверх',tp:[296,194]},
+      {id:'gate',x0:368,x1:456,y0:316,y1:350,label:'ворота',view:'loc_c2_gate.jpg',need:'gatekey',
+        locked:['Решётчатые ворота. Цепь крест-накрест и висячий замок — ржавый, но крепкий.','За прутьями — тоннель и вода. Оттуда тянуло формалином. Нужен ключ.'],
+        mg:'pipe',to:'c2_old',at:160,face:1,lines:['Ключ вошёл в замок, как нож в масло. Цепь упала в воду.','За воротами сливная труба уходила вниз под углом, как горло. Я сел на край и оттолкнулся.']},
+      {id:'far',x0:930,x1:1000,y0:230,y1:345,label:'темнота',lines:['Мостки уходят в темноту. Оттуда никто не возвращался, чтобы рассказать, что там.']},
+      {id:'water',x0:250,x1:330,y0:470,y1:520,label:'вода',once:1,lines:['Вода стояла чёрная и густая. В ней что-то плавало. Я не стал смотреть, что.']}]},
   c2_old:{name:'СТАНЦИЯ «СИТИ-ХОЛЛ», 1904',kind:'stub',bg:'loc_c2_old.jpg',col:['#06080a','#18201f'],w:2600,gy:470,al:60,ar:2540,z:.8,tint:'rgba(4,10,12,.3)',
     deco:[[400,'изразцы, мозаика «CITY HALL»'],[1200,'вода по колено, люстра'],[2420,'проход на «рынок»']],
     lights:[{x:1200,y:110,r:260,c:'200,220,180',a:.14,fl:.08}],
@@ -2906,6 +2912,16 @@ const WALK={
   c2_depot:{"step":8,"t":[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,423,418,416,413,410,408,405,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,404,406,418,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],"b":[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,427,430,430,430,430,430,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,429,428,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]},
   c2_wagon:{"step":8,"t":[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,478,470,465,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,442,445,445,442,440,440,440,440,440,469,469,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,440,441,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],"b":[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,481,444,444,444,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]}};
 for(const k in WALK)ROOMS[k].band=WALK[k];
+// Свободная ходьба (комнаты с free): маска из зелёной разметки — ячейки cell экранных px, по строкам отрезки [x0,x1) в ячейках;
+// refs — опорные фигуры автора [x, y ступней, масштаб Коня]. Сделано tools/sewer_free.py (опоры выверены по картинке).
+const FREEW={
+  c2_sewer:{"cell":4,"rows":[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[84,101,118,124,140,142],[82,147],[77,98,108,123,143,151],[71,73,76,82,146,154],[69,74,75,80,148,155,157,158],[68,79,150,160],[67,77,153,161,163,165],[66,76,155,169],[62,74,158,173],[62,73,161,177],[63,70,163,180],[62,69,166,184],[61,68,168,185],[42,69,171,191],[40,69,173,194],[38,68,176,195],[35,66,178,203],[33,65,181,206],[30,64,184,210],[30,63,186,214],[30,34,189,217],[191,221],[194,222],[196,223],[199,232],[201,234],[204,240],[207,243],[209,247],[211,250],[214,250],[217,250],[219,250],[222,250],[224,250],[227,250],[229,250],[232,250],[234,250],[86,99,100,112,237,250],[85,113,239,250],[83,113,242,250],[84,104,111,112,245,250],[85,101,247,250],[84,96],[83,93],[82,92],[81,90],[80,89],[78,87],[78,86],[77,85],[77,85],[77,85],[77,85],[76,84],[75,84],[75,84],[75,83],[75,83],[75,82],[75,81],[74,81],[73,80],[71,79],[71,78],[70,76],[70,75],[69,74],[69,75],[68,75],[68,75],[67,75],[67,75],[66,75],[66,76],[65,77],[65,76],[64,76],[64,76],[64,75],[63,75],[63,74],[63,74],[63,73],[63,72],[63,71],[65,69],[],[],[],[],[],[]],"refs":[[203,234,0.707],[289,193,0.497],[430,171,0.382],[649,191,0.449],[774,229,0.7],[926,276,0.92],[392,331,0.449],[331,361,0.485],[291,464,0.59]]}};
+for(const k in FREEW){ // отрезки -> сетка g, расширенная на 1 ячейку (с углами): узкие стыки и ступени проходимы без застреваний
+  const A=FREEW[k],gh=A.rows.length,gw=Math.max(...A.rows.map(r=>r.length?r[r.length-1]:0))+2,g=[];
+  for(let r=0;r<gh;r++)g.push(new Uint8Array(gw));
+  A.rows.forEach((r,y)=>{for(let i=0;i<r.length;i+=2)for(let x=r[i];x<r[i+1];x++)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const Y=y+dy,X=x+dx;if(Y>=0&&Y<gh&&X>=0&&X<gw)g[Y][X]=1;}});
+  A.g=g;ROOMS[k].free=A;
+}
 // Зум локации z: всё рисуется ×z (бойцы ростом как на референсах — 151 px при росте картинки 540). Комнаты выше заданы
 // в экранных пикселях; здесь — один раз — переводятся в единицы мира (÷z), в которых живут бойцы, удары и камера.
 (function(){
@@ -2943,9 +2959,9 @@ function storyChapter(n){
   storyRoom(c.room,c.at/(ROOMS[c.room].z||1),c.face);
 }
 function foeGone(){Object.assign(F[1],{gone:true,alpha:0,state:'idle',x:-9e3,vx:0,vy:0,y:GY,combo:0,gr:null,move:null});}
-function storyRoom(id,x,face){
-  const R=ROOMS[id],p=F[0];STY.room=id;WW=R.w;GY=R.gy;AL=R.al||50;AR=R.ar||R.w-50;
-  Object.assign(p,{x,y:GY,dz:0,vx:0,vy:0,state:'idle',stateT:0,facing:face||1,move:null,gr:null,combo:0,dm:STY.pdm,alpha:1,crouching:false});
+function storyRoom(id,x,face,y){
+  const R=ROOMS[id],p=F[0];if(R.free&&y===undefined){x=R.start[0];y=R.start[1];}STY.room=id;WW=R.w;GY=R.gy;AL=R.al||50;AR=R.ar||R.w-50;
+  Object.assign(p,{x,y:GY,dz:R.free?y-R.gy:0,fs:R.free?freeScale(R,x,y):0,vx:0,vy:0,state:'idle',stateT:0,facing:face||1,move:null,gr:null,combo:0,dm:STY.pdm,alpha:1,crouching:false});
   foeGone();STY.lock=null;STY.fight=null;STY.koT=0;projs=[];parts=[];hitstop=0;
   camX=clamp(x-VW()*.45,0,Math.max(0,WW-VW()));
   STY.cp={room:id,x,face,hp:p.hp};STY.label={s:R.name,t:150};
@@ -2979,10 +2995,12 @@ function storyCap(lines,after){
 function useSpot(s){
   const S=STY,k=S.room+s.id;
   const miss=[].concat(s.need||[]).find(n=>!S.flags[n]);
+  if(s.view)S.view=s.view;
   if(miss){storyCap((s.lockedBy&&s.lockedBy[miss])||s.locked);return;}
   if(s.search){searchOpen(s.search===1?'bar':s.search);return;}
   if(s.mg){storyCap(s.lines||[],()=>mgStart(s.mg,()=>{S.fade={t:0,len:80,mid:40,fn:()=>storyRoom(s.to,s.at,s.face)};}));return;} // мини-игра, потом — переход
   if(s.chapter){storyCap(s.lines||[],()=>{S.fade={t:0,len:90,mid:45,fn:()=>storyChapter(s.chapter)};});return;}
+  if(s.tp){S.fade={t:0,len:44,mid:22,fn:()=>{F[0].x=s.tp[0];F[0].dz=s.tp[1]-GY;}};snd('swing');return;} // лестница: в другую часть той же комнаты
   if(s.flag)S.flags[s.flag]=1;
   if(s.heal){F[0].hp=Math.min(100,F[0].hp+s.heal);snd('bell');}
   if(s.gone)S.used[k]=1;
@@ -2994,7 +3012,7 @@ function useSpot(s){
 // ---------- чит-меню прохождения: F2 или ` — выбор локации (сюжетные флаги и стычки до неё — как пройденные) ----------
 // CHEAT_ORDER — порядок прохождения и флаги, которые даёт каждая локация.
 const CHEAT_ORDER=[['apt',['note']],['hall',[]],['street',[]],['bar',['boss','lom']],['metro',['guard']],
-  ['c2_tunnel',[]],['c2_booth',['key']],['c2_depot',[]],['c2_wagon',['knives','knifer']],['c2_sewer',[]],['c2_old',[]],
+  ['c2_tunnel',[]],['c2_booth',['key']],['c2_depot',[]],['c2_wagon',['knives','knifer']],['c2_sewer',['gatekey']],['c2_old',[]],
   ['c2_market',['pass']],['c2_lab',[]],['c2_or',['boss2']]];
 function cheatItems(){return[...CHEAT_ORDER.map(([id])=>({id,s:ROOMS[id].name})),{id:'hp',s:'Полное здоровье'},{id:'god',s:'Бессмертие: '+(STY.god?'ВКЛ':'выкл')}];}
 function cheatTick(){
@@ -3032,7 +3050,8 @@ function storyTick(){
   const S=STY,R=ROOMS[S.room],pl=F[0],en=F[1];
   if(S.god&&pl.hp<100)pl.hp=pl.hpLag=100;
   if(S.cheat){cheatTick();return true;}
-  if(pl.dz&&(S.fight||S.koT||!R.band)){pl.dz*=.82;if(Math.abs(pl.dz)<.5)pl.dz=0;} // в бою — обратно на линию боя
+  if(S.view&&!S.cap.length)S.view=null;
+  if(pl.dz&&!R.free&&(S.fight||S.koT||!R.band)){pl.dz*=.82;if(Math.abs(pl.dz)<.5)pl.dz=0;} // в бою — обратно на линию боя
   if(pressed.has('F2')||pressed.has('Backquote')){S.cheat={i:Math.max(0,CHEAT_ORDER.findIndex(c=>c[0]===S.room)),k1:IN[0].k1,p1:IN[0].p1};snd('ui_sel');return true;}
   const ok=IN[0].p1||IN[0].k2||IN[0].s||pressed.has('Enter')||pressed.has('Space')||PAD[0].start||PAD[0].fx;
   if(S.title){if(--S.title.t<=0)S.title=null;else if(ok&&S.title.t<S.title.max-40)S.title.t=Math.min(S.title.t,24);return true;}
@@ -3061,6 +3080,7 @@ function storyTick(){
     }
   }
   pl.dzWalk=0;
+  if(R.free&&!S.fight&&!S.koT)freeTick(R,pl);
   if(R.band&&!S.fight&&!S.koT){ // вне боя ↑↓ — шаг вглубь/к нам по зелёной зоне разметки, а не прыжок и не присед
     const n=IN[0],dy=(n.d?1:0)-(n.u?1:0),bd=bandAt(R,pl.x);n.u=n.d=n.uE=n.dE=false;
     if(bd&&pl.y>=GY&&FREE.includes(pl.state)){
@@ -3069,7 +3089,7 @@ function storyTick(){
     }
   }
   S.near=null;
-  if(!S.fight&&!S.koT&&pl.y>=GY&&FREE.includes(pl.state))for(const s of R.spots||[]){if(s.gone&&S.used[S.room+s.id]||s.hideIf&&S.flags[s.hideIf])continue;if(pl.x>=s.x0&&pl.x<=s.x1){S.near=s;break;}}
+  if(!S.fight&&!S.koT&&pl.y>=GY&&FREE.includes(pl.state))for(const s of R.spots||[]){if(s.gone&&S.used[S.room+s.id]||s.hideIf&&S.flags[s.hideIf])continue;if(pl.x>=s.x0&&pl.x<=s.x1&&(s.y0===undefined||GY+(pl.dz||0)>=s.y0&&GY+(pl.dz||0)<=s.y1)){S.near=s;break;}}
   if(S.near&&IN[0].s&&IN[0].g){IN[0].s=false;IN[0].g=false;pl.buf=newBuf();useSpot(S.near);return true;}
   return false;
 }
@@ -3079,12 +3099,35 @@ function bandAt(R,x){
   if(B.t[i]<0){let j=-1;for(let k=1;k<n&&j<0;k++){if(i-k>=0&&B.t[i-k]>=0)j=i-k;else if(i+k<n&&B.t[i+k]>=0)j=i+k;}if(j<0)return null;i=j;}
   return[B.t[i],B.b[i]];
 }
+// свободная ходьба: можно ли стоять ступнями в точке (экранные px комнаты)
+function freeOk(R,x,y){const A=R.free,r=A.g[Math.floor(y/A.cell)];return!!r&&r[Math.floor(x/A.cell)]===1;}
+// масштаб Коня в точке — среднее по опорным фигурам, ближние весят больше
+function freeScale(R,x,y){let a=0,b=0;for(const[rx,ry,s]of R.free.refs){const w=1/(((x-rx)**2+(y-ry)**2)**1.5+800);a+=w*s;b+=w;}return a/b;}
+function freeTick(R,pl){
+  const n=IN[0],dx=(n.r?1:0)-(n.l?1:0),dy=(n.d?1:0)-(n.u?1:0),run=n.run;
+  n.l=n.r=n.u=n.d=n.lE=n.rE=n.uE=n.dE=n.run=false; // ход — здесь, боец сам не идёт, не прыгает и не приседает
+  let y=GY+(pl.dz||0);const s=freeScale(R,pl.x,y);pl.fs=s;
+  if(pl.y>=GY&&FREE.includes(pl.state)&&!n.blk&&(dx||dy)){
+    const v=pl.ch.speed*s*(run?1.6:1),nx=pl.x+dx*v,ny=y+dy*v*.6;
+    // упёрся в край зоны — если проход есть чуть выше/ниже (левее/правее, до 16 px), Конь сам скользит вдоль края
+    const side=(ok)=>{for(let k=2;k<=16;k+=2){if(ok(-k))return -1;if(ok(k))return 1;}return 0;};
+    if(dx){
+      if(freeOk(R,nx,y))pl.x=nx;
+      else if(!dy){const d=side(k=>freeOk(R,nx,y+k));if(d&&freeOk(R,pl.x,y+d*v*.6)){y+=d*v*.6;if(freeOk(R,nx,y))pl.x=nx;}}
+    }
+    if(dy){
+      if(freeOk(R,pl.x,ny))y=ny;
+      else if(!dx){const d=side(k=>freeOk(R,pl.x+k,ny));if(d&&freeOk(R,pl.x+d*v,y)){pl.x+=d*v;if(freeOk(R,pl.x,ny))y=ny;}}
+    }
+    if(dx){pl.facing=dx;if(F[1].gone)F[1].x=pl.x+dx*4000;}pl.dz=y-GY;pl.dzWalk=1;pl.running=!!run;
+  }
+}
 // после хода бойца: шаг только вглубь — тоже анимация ходьбы
 function storyDepthAnim(){const p=F[0];if(p.dzWalk&&p.state==='idle'){p.state='walk';p.walkT+=.22;}}
 // смещение бойца вглубь при отрисовке: сдвиг на dz и лёгкое уменьшение вдали (перспектива)
 const DZK=.0012;
 function depthT(f){
-  if(G.mode!==7||!f.dz)return false;const s=1+f.dz*RZ()*DZK;
+  if(G.mode!==7||!f.dz&&!f.fs)return false;const s=f.fs||1+f.dz*RZ()*DZK;
   ctx.save();ctx.translate(f.x,GY+f.dz);ctx.scale(s,s);ctx.translate(-f.x,-GY);return true;
 }
 function storyCam(){
@@ -3585,6 +3628,7 @@ function storyHud(){
   if(S.cheat){if(S.search)drawSearch();else if(S.mg)drawMg();drawCheat();return;}
   if(S.search){drawSearch();if(!S.cap.length)return;}
   else if(S.mg){drawMg();if(!S.cap.length)return;}
+  if(S.view&&S.cap.length){const im=simgf(S.view);if(imgOk(im)){ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);const w=H*im.naturalWidth/im.naturalHeight;ctx.drawImage(im,(W-w)/2,0,w,H);}} // ближний план (ворота)
   // здоровье
   const bar=(x,w,f,name,right)=>{
     ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(x-3,24,w+6,22);
@@ -3597,7 +3641,7 @@ function storyHud(){
   if(pl.combo>=2&&!en.gone)txt(`${pl.combo} УДАРОВ`,30,108,26,'#e8c060','left');
   if(S.label&&!S.mg){ctx.globalAlpha=Math.min(1,S.label.t/30);txt(S.label.s,W/2,44,20,'#efe6c8','center');ctx.globalAlpha=1;}
   if(S.near&&!S.cap.length&&!S.fade){
-    const z=RZ(),x=(pl.x-camX)*z,y=(pl.y+(pl.dz||0)-232)*z,t=`${ctlLabel('g')} — ${S.near.label}`;ctx.font='bold 14px Arial';const w=ctx.measureText(t).width+20;
+    const z=RZ(),x=(pl.x-camX)*z,y=(pl.y+(pl.dz||0)-232*(pl.fs||1))*z,t=`${ctlLabel('g')} — ${S.near.label}`;ctx.font='bold 14px Arial';const w=ctx.measureText(t).width+20;
     ctx.fillStyle='rgba(10,10,14,.75)';ctx.fillRect(x-w/2,y-18,w,26);ctx.strokeStyle='rgba(239,230,200,.7)';ctx.strokeRect(x-w/2,y-18,w,26);
     txt(t,x,y,14,'#efe6c8','center',true);
   }
