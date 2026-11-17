@@ -2607,6 +2607,15 @@ function txt(s,x,y,size,col,align='center',plain){
   ctx.textAlign=align;ctx.lineJoin='round';ctx.lineWidth=Math.max(3,size/7);
   ctx.strokeStyle='#000';ctx.strokeText(s,x,y);ctx.fillStyle=col;ctx.fillText(s,x,y);
 }
+// подпись кнопки в плашке QTE/ультры: значок геймпада — как обычный текст, надпись клавиши (Num7, Space…) —
+// обычным жирным Arial без толстой обводки, иначе буквы слипаются
+function keyTxt(lb,x,y,size,col,maxW){
+  if(lb.length<2){txt(lb,x,y,size,col);return;}
+  const dark=col==='#000';ctx.font=`bold ${Math.round(size)}px Arial,sans-serif`;ctx.textAlign='center';
+  if(maxW){const w=ctx.measureText(lb).width;if(w>maxW){const s2=Math.max(8,Math.floor(size*maxW/w));y-=(size-s2)*.36;ctx.font=`bold ${s2}px Arial,sans-serif`;}}
+  if(!dark){ctx.lineJoin='round';ctx.lineWidth=2.5;ctx.strokeStyle='rgba(0,0,0,.85)';ctx.strokeText(lb,x,y);}
+  ctx.fillStyle=col;ctx.fillText(lb,x,y);
+}
 function hud(){
   if(G.mode===7){storyHud();return;}
   for(const f of F){
@@ -2654,7 +2663,7 @@ function drawQTE(f){
     ctx.fillRect(x0+i*bw+3,y,bw-6,bw-6);
     ctx.strokeStyle=cur?'#fff':'#666';ctx.lineWidth=cur?3:1.5;ctx.strokeRect(x0+i*bw+3,y,bw-6,bw-6);
     const lb=ctlLabel(g.qte[i],NET.on?0:f.i),big=lb.length<2;
-    txt(lb,x0+i*bw+bw/2,y+(big?31:27),big?(cur?30:24):Math.min(17,60/lb.length),done?'#bfffc8':'#fff');
+    keyTxt(lb,x0+i*bw+bw/2,y+(big?31:25),big?(cur?30:24):14,big?(done?'#bfffc8':'#fff'):cur?'#000':done?'#dfffe4':'#fff',bw-14);
   }
   const k=clamp(g.qt/g.qmax,0,1);
   ctx.fillStyle='#000';ctx.fillRect(x0+1,y+bw,n*bw-2,8);
@@ -3700,7 +3709,7 @@ function ultraRow(w,from,cnt,cur,y,bw){
     ctx.fillStyle=c?'rgba(255,210,74,.95)':`rgba(0,0,0,${cur<0?.7:Math.max(.3,.75-i*.07)})`;ctx.fillRect(x0+i*bw+4,y,bw-8,bw-8);
     ctx.strokeStyle=c?'#fff':'#666';ctx.lineWidth=c?3:1.5;ctx.strokeRect(x0+i*bw+4,y,bw-8,bw-8);
     const lb=ctlLabel(b,NET.on||w.cpu?0:w.i),big=lb.length<2,fs=bw*(big?(c?.58:.46):.33);
-    txt(lb,x0+i*bw+bw/2,y+bw*.5+fs*.36-2,big?fs:Math.min(fs,bw*1.2/lb.length),c?'#000':'#fff');
+    keyTxt(lb,x0+i*bw+bw/2,y+bw*.5+fs*.36-2,big?fs:Math.min(fs,bw*1.2/lb.length),c?'#000':'#fff',bw-18);
   }
   return x0;
 }
